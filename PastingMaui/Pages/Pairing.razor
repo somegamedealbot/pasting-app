@@ -1,0 +1,125 @@
+﻿@page "/pairing"
+
+@using System.Collections.ObjectModel
+@using PastingMaui
+@using Data
+@using System.Collections.Concurrent
+@inject ToastService toast_service
+@inject IPasting pastingApp
+@*@inject IServer server*@
+
+@*
+    Add the allowing of swapping between client state and server state
+    Using state dependent rendering and refreshing
+
+    Default: Client
+
+    Client -> Server : turn scanner off remove displayed list, init server if not already started,
+    add waiting for device connection screen
+
+    Server -> Client : stop server, turn on scanner and display the updated list
+*@
+
+<h3>Pairing</h3>
+<button @onclick="Rerender" type="button" class="btn btn-primary">Refresh List</button>
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">
+                Device Name
+            </th>
+            <th scope="col">
+                Device Type
+            </th>
+            <th scope="col">
+            </th>
+        </tr>
+    </thead>
+    <!-- Write method here that will run after an change is detected in discovered_devices
+        maybe method will be async / not sure -> as a Task for changing the dom
+    -->
+    <tbody>
+        @*@{
+            async void refreshList()
+            {
+                {
+                    try{
+                        @foreach (var device in pastingApp.client.discovered_devices)
+                        {
+                            <tr>
+                                <th scope="col" class="col-3 text-truncate">
+                                @device.Name;
+                                </th>
+                                <th scope="col" class="col-4 text-truncate">
+                                @device.Id
+                                </th>
+                                <th scope="col">
+                                    <button @onclick="() => ConnectToDevice(device)" type="button" class="btn btn-primary">Connect</button>
+                                </th>
+                            </tr>
+                        }
+                    }
+                    catch(Exception e)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Modifying list while enumerating " + e.Message);
+                    }
+
+                }
+            }
+            refreshList();
+        }*@
+    </tbody>
+</table>
+
+
+
+@code {
+
+    //ObservableCollection<IBTDevice> discovered_devices = MauiProgram.BTDevices;
+    //List<IBTDevice> devices_removed = new List<IBTDevice>();
+    //List<ToastData> toastDatas = new List<ToastData>();
+
+
+    protected async Task ConnectToDevice(IBTDevice device)
+    {
+        ToastData alert = new ToastData("Connecting", $"Trying to connect to {device.Name}", ToastType.Alert);
+        toast_service.AddToast(alert);
+        // toastDatas.Add(alert);
+        // await Rerender();
+        ToastData responseAlert = await device.Connect(pastingApp.client.scanner);
+        toast_service.AddToast(responseAlert);
+        //await Rerender();
+    }
+    
+    //protected RenderFragment RenderToast(ToastData toastData) => (builder) =>
+    //{
+    //    builder.OpenComponent(0, typeof(ToastAlert));   
+    //    builder.AddAttribute(1, "toastContent", toastData);
+    //    builder.CloseComponent();
+    //};
+
+    protected override void OnInitialized()
+    {
+        // scanner will remain the same after leaving page
+        // so will the collection of devices
+        pastingApp.StartClient();
+        // start server too 
+
+
+        //IBTDevice.RefreshDevice = Rerender;
+        //var scanner = pastingApp.client.scanner;
+        //scanner.RefreshBTDevices = Rerender;
+        //scanner.ScanDevices(); // scan devices only once and when clicked off it stays active rather than reinitialized or just clear the list after clicking 
+       
+    }
+
+    protected async Task Rerender()
+    {
+        
+        await InvokeAsync(StateHasChanged);  // could be running on another Thread
+        
+        // dispatcher
+        // dispose
+    }
+
+}

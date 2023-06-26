@@ -1,0 +1,47 @@
+﻿@using System.ComponentModel
+@using System.Collections.ObjectModel;
+@inject ToastService toast_service
+
+<div class="position-absolute bottom-0 end-0 toast-alert-container">
+
+    @{
+        foreach(var toast in toast_service.Toasts)
+        {
+            @RenderToast(toast);
+        }
+    //ToastData test = new ToastData("test", "testing");
+    //<Toast toastData= "test" ></Toast>
+}
+</div>
+
+@code {
+
+
+    protected override void OnInitialized()
+    {
+        toast_service.Toasts.CollectionChanged += async (sender, args) =>
+        {
+            await Refresh();
+        };
+        toast_service.UpdateRendered = new PropertyChangedEventHandler(async (obj, sender) =>
+        {
+            await Refresh();
+        });
+
+    }
+
+    protected RenderFragment RenderToast(ToastData toastData) => (builder) =>
+    {
+        // just use the original method to dynamically render, not worth it
+        // on change in toastData baed on Inoifitcation, rerender
+        builder.OpenComponent(0, typeof(Toast));
+        builder.AddAttribute(1, "toastData", toastData);
+        builder.CloseComponent();
+    };
+
+    protected async Task Refresh()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+}

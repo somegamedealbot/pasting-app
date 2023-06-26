@@ -1,0 +1,24 @@
+﻿<div class="toast @(toastData.isVisible ? "toast-visible" : "toast-invisible" )" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+        @if (toastData.Title != null)
+        {
+            <strong>@toastData.Title</strong>
+        }
+    </div>
+    <div class="toast-body">
+        <div>
+            @if (toastData.Message != null)
+            {
+                <div>@toastData.Message</div>
+            }
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public ToastData toastData { get; set; }
+
+
+}
