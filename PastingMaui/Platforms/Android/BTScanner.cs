@@ -14,24 +14,35 @@ using System.Runtime.InteropServices;
 using Java.Util;
 using Java.Nio;
 using System.Runtime.CompilerServices;
+using Android.Runtime;
 
 namespace PastingMaui.Platforms
 {
-
-    public class BTScanner : Activity, IBTScan, IDisposable
+    [Service(Exported = false)]
+    [IntentFilter(actions: new string[]{"SCAN_DEVICE", "ENABLE_BLUETOOTH_RESULT"})]
+    public class BTScanner : Service, IBTScan, IDisposable
     {
+        public static readonly string RescanDevicesAction = "RESCAN_DEVICES";
+        public static readonly string SetupReceiversAction = "SETUP_RECEIVERS";
+        public static readonly string ScanDevicesAction = "SCAN_DEVICES";
+        public static readonly int ENABLE_BLUETOOTH_REQ_CODE = 567;
+        public static readonly string EnableBluetoothResult = "ENABLE_BLUETOOTH_RESULT";
+        public static readonly string BondedDevicesAction = "BONDED_DEVICES";
 
         enum WatcherState
         {
-            IN_PROGRESS,
+            NOT_CREATED,
+            IDLE,
+            SCANNING,
             STOPPED
         }
         
         public static int REQUEST_CODE = 677;
         BluetoothManager manager;
         BluetoothAdapter adapter;// share the bluetooth adapter
-        Context appContext;
         WatcherState state;
+
+        bool scan_success;
         public Func<Task> RefreshBTDevices
         {
             get;
@@ -48,77 +59,56 @@ namespace PastingMaui.Platforms
 
         List<BTDevice> devices;
 
-        public BTScanner(ObservableCollection<IBTDevice> devices, Context context)
+        public override void OnCreate()
         {
-            manager = (BluetoothManager)context.GetSystemService(Context.BluetoothService);
+            base.OnCreate();
+            // one-time creation put here
+            manager = (BluetoothManager)MauiApplication.Context.GetSystemService(Context.BluetoothService);
             adapter = manager.Adapter;
-            btDevicesCollection = devices;
-            btDevices = devices;
-            
-        }
+            scan_success = false;
+            state = WatcherState.NOT_CREATED;
 
-        protected override void OnCreate(Bundle savedInstanceState)
-        {
-            base.OnCreate(savedInstanceState);
-            manager = (BluetoothManager)this.GetSystemService(Context.BluetoothService);
-            adapter = manager.Adapter;
-            //btDevicesCollection = Intent.GetParcelableExtra("devices");
-            //btDevices = devices;
-            devices = new List<BTDevice>();
-        }
-
-        protected override void OnStart() // this can either be in the app or here or the server
-        {
-            base.OnStart();
-            // check if bluetooth is enabled to start
-            if (adapter == null)
-            {
-                CreateWatcher();
-            }
-
-            if (!adapter.IsEnabled)
-            {
-                Intent enableBT = new Intent(BluetoothAdapter.ActionRequestEnable);
-                StartActivityForResult(enableBT, 3);
-            }
+            SetupReceivers();
 
         }
 
-        public void StartWatcher()
-        {
-            if (adapter == null)
-            {
-                CreateWatcher();
-            }
-
-            if (!adapter.IsEnabled)
-            {
-                Intent enableBT = new Intent(BluetoothAdapter.ActionRequestEnable);
-                StartActivityForResult(enableBT, 3);
-            }
-        }
-
-        private void CreateWatcher()
+        private void SetupReceivers()
         {
             // sets up action when a device is found
-            this.RegisterReceiver(new DiscoveryAction(devices, this), 
+            this.RegisterReceiver(new DiscoveryAction(devices, this),
                 new IntentFilter(BluetoothDevice.ActionFound));
 
             // sets up action when the discovery ends
             this.RegisterReceiver(new DiscoveryAction(devices, this),
                 new IntentFilter(BluetoothAdapter.ActionDiscoveryFinished));
+        }
 
-            ScanDevices();
+        private void SetupWatcher()
+        {
+            if (!adapter.IsEnabled)
+            {
+
+                // if needed
+                Intent enableBT = new Intent(BluetoothAdapter.ActionRequestEnable);
+                // task user to enable bluetooth
+                MainActivity.GetMainActivity()?.StartActivityForResult(enableBT, ENABLE_BLUETOOTH_REQ_CODE);
+
+                // return and wait for result passed from MainActivity
+                return;
+
+            }
+
+            devices = new List<BTDevice>();
 
             ICollection<BluetoothDevice> bondedDevices = adapter.BondedDevices;
+            ScanMode mode = adapter.ScanMode;
 
             using (IEnumerator<BluetoothDevice> enumerator = bondedDevices.GetEnumerator())
             {
-                do
-                {
-                    btDevicesCollection.Add(new BTDevice(enumerator.Current));
-                } 
-                while (enumerator.MoveNext());
+                    while (enumerator.MoveNext())
+                    {
+                        devices.Add(new BTDevice(enumerator.Current));
+                    } 
             }
 
         }
@@ -166,39 +156,69 @@ namespace PastingMaui.Platforms
         }
 
         protected void ScanFinished() {
-            Intent resultIntent = new Intent();
-            // create 2 lists based on java, return those
-            resultIntent.PutParcelableArrayListExtra("devices", devices.Cast<IParcelable>().ToList());
-            //Bundle bundle = new Bundle();
-            //bundle.PutParcelableArrayList("devices", (IList<IParcelable>)devices);
-            //resultIntent.PutExtra("DEVICE_DATA", bundle);
-            SetResult(Result.Ok, resultIntent);
 
+            // Once scan is finished, broadcast the data back and kill the thread
+            Intent resultIntent = new Intent();
+            resultIntent.PutParcelableArrayListExtra("devices", devices.Cast<IParcelable>().ToList());
+            resultIntent.SetAction(ScanDevicesAction);
+            SendBroadcast(resultIntent);
+            state = WatcherState.IDLE;
+
+        }
+
+        [return: GeneratedEnum]
+        public override StartCommandResult OnStartCommand(Intent intent, [GeneratedEnum] StartCommandFlags flags, int startId)
+        {
+            StartCommandResult result = base.OnStartCommand(intent, flags, startId);
+
+            if (intent.Action == ScanDevicesAction)
+            {
+                if (state == WatcherState.NOT_CREATED)
+                {
+                    SetupWatcher();
+                }
+
+                ScanDevices();
+
+            }
+            else if (intent.Action == SetupReceiversAction)
+            {
+                // unpack the receivers
+                // set them up
+            }
+            else if (intent.Action == BluetoothAdapter.ActionRequestEnable)
+            {
+                bool enabledBT = intent.GetBooleanExtra("enabled", false);
+                if (enabledBT)
+                {
+                    ScanDevices();
+                }
+            }
+
+            return result;
         }
 
         public void ScanDevices()
         {
             // before discovering check if already discovering
 
-
             if (!adapter.IsDiscovering)
             {
-                adapter.StartDiscovery();
+                state = WatcherState.SCANNING;
+                scan_success = adapter.StartDiscovery();
+                //ThreadStart start = new ThreadStart(() =>
+                //{
+                //    scanSuccess = adapter.StartDiscovery();
+                //    return;
+                //});
+                //Thread thread = new Thread(ScanFinished);
             }
             else
             {
-                // display toast here
+                // Display toast saying already scanning
+
             }
 
-
-
-        }
-
-        protected override void OnDestroy()
-        {
-            base.OnDestroy();
-            StopScan();
-            // maybe remove the collection of devices?
         }
 
         protected override void Dispose(bool disposing)
@@ -230,6 +250,11 @@ namespace PastingMaui.Platforms
         public bool isScanning()
         {
             throw new NotImplementedException();
+        }
+
+        public override IBinder OnBind(Intent intent)
+        {
+            return null;
         }
     }
 }

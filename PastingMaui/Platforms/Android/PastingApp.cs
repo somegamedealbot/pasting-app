@@ -50,12 +50,15 @@ namespace PastingMaui.Platforms
 
         public void StartClient()
         {
-            Intent clientIntent = new(Application.Context, typeof(Client));
+            appClient = new Client();
+
+
+            //Intent clientIntent = new(Application.Context, typeof(Client));
             
-            // prevents multiple instances of the client and required for starting in non-activity class
-            clientIntent.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NewTask);
+            //// prevents multiple instances of the client and required for starting in non-activity class
+            //clientIntent.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NewTask);
             
-            Application.Context.StartActivity(clientIntent);
+            //Application.Context.StartActivity(clientIntent);
         }
 
         public void StartServer()

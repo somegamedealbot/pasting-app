@@ -14,7 +14,7 @@ using System;
 
 namespace PastingMaui.Platforms
 {
-    internal class BTDevice : Java.Lang.Object, IParcelable, IParcelableCreator, IBTDevice
+    public class BTDevice : Java.Lang.Object, IParcelable, IParcelableCreator, IBTDevice
     {
         public BluetoothDevice device
         {
@@ -43,7 +43,6 @@ namespace PastingMaui.Platforms
         {
             // read BluetoothDevice
             device = parcel.ReadTypedObject(this).JavaCast<BluetoothDevice>();
-            secure = parcel.ReadBoolean(); // ?
         }
 
         // connect to a device (server)
@@ -127,7 +126,6 @@ namespace PastingMaui.Platforms
         public void WriteToParcel(Parcel dest, [global::Android.Runtime.GeneratedEnum] ParcelableWriteFlags flags)
         {
             dest.WriteTypedObject(device, 0);
-            dest.WriteBoolean(secure);
         }
     }
 }
