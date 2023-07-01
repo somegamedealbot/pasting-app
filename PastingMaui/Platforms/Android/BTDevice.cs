@@ -2,19 +2,23 @@
 using Android.Database;
 using Android.Media;
 using Android.OS;
+using AndroidX.VersionedParcelable;
 using Java.Interop;
 using Java.IO;
 using Java.Nio;
+using Java.Security;
 using Java.Util;
 using Org.Apache.Http.Client;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Android;
 using PastingMaui.Shared;
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
 
 namespace PastingMaui.Platforms
 {
-    public class BTDevice : Java.Lang.Object, IParcelable, IParcelableCreator, IBTDevice
+    public class BTDevice : Java.Lang.Object, IParcelable, IBTDevice
     {
         public BluetoothDevice device
         {
@@ -39,10 +43,16 @@ namespace PastingMaui.Platforms
             secure = true;
         }
 
+        [ExportField("CREATOR")]
+        public static IParcelableCreator InitCreator()
+        {
+            return new BTDeviceCreator();
+        }
+
         public BTDevice(Parcel parcel)
         {
             // read BluetoothDevice
-            device = parcel.ReadTypedObject(this).JavaCast<BluetoothDevice>();
+            device = parcel.ReadTypedObject(BluetoothDevice.Creator).JavaCast<BluetoothDevice>();
         }
 
         // connect to a device (server)
@@ -96,19 +106,6 @@ namespace PastingMaui.Platforms
             throw new NotImplementedException();
         }
 
-        public Java.Lang.Object CreateFromParcel(Parcel source)
-        {
-            return new BTDevice(source).JavaCast<Java.Lang.Object>();
-        }
-
-        public Java.Lang.Object[] NewArray(int size)
-        {
-            return Array.ConvertAll(new BTDevice[size], (device) =>
-            {
-                return device.JavaCast<Java.Lang.Object>();
-            });
-        }
-
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
@@ -125,7 +122,24 @@ namespace PastingMaui.Platforms
 
         public void WriteToParcel(Parcel dest, [global::Android.Runtime.GeneratedEnum] ParcelableWriteFlags flags)
         {
-            dest.WriteTypedObject(device, 0);
+            dest.WriteTypedObject(device, flags);
         }
     }
+
+    public class BTDeviceCreator : Java.Lang.Object, IParcelableCreator
+    {
+        public Java.Lang.Object CreateFromParcel(Parcel source)
+        {
+            return new BTDevice(source).JavaCast<Java.Lang.Object>();
+        }
+
+        public Java.Lang.Object[] NewArray(int size)
+        {
+            return Array.ConvertAll(new BTDevice[size], (device) =>
+            {
+                return device.JavaCast<Java.Lang.Object>();
+            });
+        }
+    }
+
 }

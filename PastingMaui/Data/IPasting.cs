@@ -24,5 +24,7 @@ namespace PastingMaui.Data
 
         public void StartClient();
 
+        public void StartScanningDevices();
+
     }
 }

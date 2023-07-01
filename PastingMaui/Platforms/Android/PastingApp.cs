@@ -17,12 +17,16 @@ namespace PastingMaui.Platforms
     internal class PastingApp : IPasting
     {
 
-        Client appClient;
-        Server appServer;
+        public Client appClient;
+        public Server appServer;
+        public static PastingApp app
+        {
+            get; private set;
+        }
 
         public PastingApp()
         {
-
+            app = this;
         }
 
         public PastingApp(Context context)
@@ -33,6 +37,10 @@ namespace PastingMaui.Platforms
             //appServer = new Server(context);
             // https://github.com/android/connectivity-samples/issues/263#issuecomment-1100650576
             // use for requsting bluetooth permission
+
+
+            appClient = new Client();
+            // create server here
         }
 
         IServer IPasting.server {
@@ -50,7 +58,6 @@ namespace PastingMaui.Platforms
 
         public void StartClient()
         {
-            appClient = new Client();
 
 
             //Intent clientIntent = new(Application.Context, typeof(Client));
@@ -64,6 +71,16 @@ namespace PastingMaui.Platforms
         public void StartServer()
         {
 
+        }
+
+        public static PastingApp getApp()
+        {
+            return app ?? null;
+        }
+
+        public void StartScanningDevices()
+        {
+            appClient.ScanDevices();
         }
     }
 }

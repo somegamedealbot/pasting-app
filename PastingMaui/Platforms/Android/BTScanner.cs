@@ -15,6 +15,7 @@ using Java.Util;
 using Java.Nio;
 using System.Runtime.CompilerServices;
 using Android.Runtime;
+using static PastingMaui.Platforms.Client;
 
 namespace PastingMaui.Platforms
 {
@@ -25,9 +26,12 @@ namespace PastingMaui.Platforms
         public static readonly string RescanDevicesAction = "RESCAN_DEVICES";
         public static readonly string SetupReceiversAction = "SETUP_RECEIVERS";
         public static readonly string ScanDevicesAction = "SCAN_DEVICES";
+        public static readonly string ScanFinishedAction = "SCAN_FINISHED";
         public static readonly int ENABLE_BLUETOOTH_REQ_CODE = 567;
         public static readonly string EnableBluetoothResult = "ENABLE_BLUETOOTH_RESULT";
         public static readonly string BondedDevicesAction = "BONDED_DEVICES";
+
+        public static readonly string BondedDevicesKey = "bonded devices";
 
         enum WatcherState
         {
@@ -51,13 +55,11 @@ namespace PastingMaui.Platforms
 
         public ObservableCollection<IBTDevice> btDevicesCollection
         {
-            get;
-            set;
+            get
+            {
+                return PastingApp.getApp()?.appClient.discovered_devices;
+            }
         }
-
-        ObservableCollection<IBTDevice> btDevices;
-
-        List<BTDevice> devices;
 
         public override void OnCreate()
         {
@@ -75,11 +77,11 @@ namespace PastingMaui.Platforms
         private void SetupReceivers()
         {
             // sets up action when a device is found
-            this.RegisterReceiver(new DiscoveryAction(devices, this),
+            this.RegisterReceiver(new DiscoveryAction(),
                 new IntentFilter(BluetoothDevice.ActionFound));
 
             // sets up action when the discovery ends
-            this.RegisterReceiver(new DiscoveryAction(devices, this),
+            this.RegisterReceiver(new DiscoveryFinished(this),
                 new IntentFilter(BluetoothAdapter.ActionDiscoveryFinished));
         }
 
@@ -98,7 +100,7 @@ namespace PastingMaui.Platforms
 
             }
 
-            devices = new List<BTDevice>();
+            List<IParcelable> btPairedDevices = new List<IParcelable>();
 
             ICollection<BluetoothDevice> bondedDevices = adapter.BondedDevices;
             ScanMode mode = adapter.ScanMode;
@@ -107,47 +109,30 @@ namespace PastingMaui.Platforms
             {
                     while (enumerator.MoveNext())
                     {
-                        devices.Add(new BTDevice(enumerator.Current));
+                        btPairedDevices.Add(new BTDevice(enumerator.Current));
                     } 
             }
 
+            Intent intent = new Intent();
+            intent.PutParcelableArrayListExtra(BondedDevicesKey, btPairedDevices);
+            intent.SetAction(BondedDevicesAction);
+            SendBroadcast(intent);
+
         }
 
-        private class DiscoveryAction : BroadcastReceiver
+        private class DiscoveryFinished : BroadcastReceiver
         {
 
-            List<BTDevice> devices;
             BTScanner scanner;
-
-            public DiscoveryAction(List<BTDevice> btDevices, BTScanner activity)
+            public DiscoveryFinished(BTScanner btScanner)
             {
-                devices = btDevices;
-                scanner = activity;
+                scanner = btScanner;
             }
 
             public override void OnReceive(Context context, Intent intent)
             {
                 string action = intent.Action;
-                if (BluetoothDevice.ActionFound.Equals(action))
-                {
-                    int version = DeviceInfo.Current.Version.Major;
-                    BluetoothDevice device;
-                    if (version >= 33)
-                    {
-                        device = (BluetoothDevice)intent.GetParcelableExtra(action, Class);
-                    }
-                    else
-                    {
-                        device = (BluetoothDevice)intent.GetParcelableExtra(action);
-                    }
-
-                    if (device != null && device.BondState != Bond.Bonded)
-                    {
-                        devices.Add(new BTDevice(device));
-                    }
-
-                }
-                else if (BluetoothAdapter.ActionDiscoveryFinished.Equals(action))
+                if (BluetoothAdapter.ActionDiscoveryFinished.Equals(action))
                 {
                     scanner.ScanFinished();
                 }
@@ -159,8 +144,7 @@ namespace PastingMaui.Platforms
 
             // Once scan is finished, broadcast the data back and kill the thread
             Intent resultIntent = new Intent();
-            resultIntent.PutParcelableArrayListExtra("devices", devices.Cast<IParcelable>().ToList());
-            resultIntent.SetAction(ScanDevicesAction);
+            resultIntent.SetAction(ScanFinishedAction);
             SendBroadcast(resultIntent);
             state = WatcherState.IDLE;
 
