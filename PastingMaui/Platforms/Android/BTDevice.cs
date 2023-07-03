@@ -2,6 +2,7 @@
 using Android.Database;
 using Android.Media;
 using Android.OS;
+using Android.Widget;
 using AndroidX.VersionedParcelable;
 using Java.Interop;
 using Java.IO;
@@ -15,6 +16,7 @@ using PastingMaui.Shared;
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.ConstrainedExecution;
+using AndroidToast = Android.Widget.Toast;
 
 namespace PastingMaui.Platforms
 {
@@ -25,11 +27,29 @@ namespace PastingMaui.Platforms
             get; private set;
         }
 
-        public string Id => throw new NotImplementedException();
+        public string Id
+        {
+            get
+            {
+                return device.Alias;
+            }
+        }
 
-        public string Name => throw new NotImplementedException();
+        public string Name
+        {
+            get
+            {
+                return device.Name;
+            }
+        }
 
-        public string Type => throw new NotImplementedException();
+        public string Type
+        {
+            get
+            {
+                return device.Address.ToString();
+            }
+        }
 
         private BluetoothSocket socket;
         System.IO.Stream inStream;
@@ -61,6 +81,7 @@ namespace PastingMaui.Platforms
 
             socketType = secure ? "Secure" : "Insecure";
             UUID convertedUuid = UUID.FromString(ServiceConfig.serviceUuidString);
+            AndroidToast toast;
             
             try
             {
@@ -77,16 +98,23 @@ namespace PastingMaui.Platforms
             {
                 socket.Dispose();
                 socket = null;
+                toast = AndroidToast.MakeText(MainActivity.GetMainActivity(), "Failed to connect: something went wrong when connecitng to sockets", ToastLength.Short);
+                toast.Show();
                 return Task.FromResult(new ToastData("Failed to connect", "Something went wrong when connecting socket", ToastType.Alert));
             }
 
             // have input and outputs streams
-            if (socket != null)
+            if (socket.IsConnected)
             {
                 inStream = socket.InputStream;
                 outStream = socket.OutputStream;
             }
+            else
+            {
+                return Task.FromResult(new ToastData("Failed to connect", $"Make sure that {device.Name} is currently running the app", ToastType.Alert));
+            }
 
+            toast = AndroidToast.MakeText(MainActivity.GetMainActivity(), $"Connected! Successfully connected to {device.Name}", ToastLength.Short);
             return Task.FromResult(new ToastData("Connected!", $"Successfully connected to {device.Name}", ToastType.Alert));
 
         }

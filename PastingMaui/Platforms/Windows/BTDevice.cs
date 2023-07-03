@@ -12,6 +12,7 @@ using Windows.Devices.Bluetooth.Rfcomm;
 using PastingMaui.Shared;
 using Windows.Storage.Streams;
 using Windows.Networking.Sockets;
+using System.IO;
 
 namespace PastingMaui.Platforms
 {

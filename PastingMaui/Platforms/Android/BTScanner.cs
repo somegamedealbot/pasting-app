@@ -16,6 +16,7 @@ using Java.Nio;
 using System.Runtime.CompilerServices;
 using Android.Runtime;
 using static PastingMaui.Platforms.Client;
+using Android.Widget;
 
 namespace PastingMaui.Platforms
 {
@@ -33,7 +34,7 @@ namespace PastingMaui.Platforms
 
         public static readonly string BondedDevicesKey = "bonded devices";
 
-        enum WatcherState
+        public enum WatcherState
         {
             NOT_CREATED,
             IDLE,
@@ -44,7 +45,7 @@ namespace PastingMaui.Platforms
         public static int REQUEST_CODE = 677;
         BluetoothManager manager;
         BluetoothAdapter adapter;// share the bluetooth adapter
-        WatcherState state;
+        public WatcherState state;
 
         bool scan_success;
         public Func<Task> RefreshBTDevices
@@ -61,6 +62,8 @@ namespace PastingMaui.Platforms
             }
         }
 
+        ObservableCollection<IBTDevice> IBTScan.btDevicesCollection { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
         public override void OnCreate()
         {
             base.OnCreate();
@@ -71,7 +74,7 @@ namespace PastingMaui.Platforms
             state = WatcherState.NOT_CREATED;
 
             SetupReceivers();
-
+            state = WatcherState.IDLE;
         }
 
         private void SetupReceivers()
@@ -85,8 +88,9 @@ namespace PastingMaui.Platforms
                 new IntentFilter(BluetoothAdapter.ActionDiscoveryFinished));
         }
 
-        private void SetupWatcher()
+        private void AdapterOnCheck()
         {
+            // checks if adapter is on
             if (!adapter.IsEnabled)
             {
 
@@ -100,6 +104,9 @@ namespace PastingMaui.Platforms
 
             }
 
+        }
+
+        public void GetBondedDevices() {
             List<IParcelable> btPairedDevices = new List<IParcelable>();
 
             ICollection<BluetoothDevice> bondedDevices = adapter.BondedDevices;
@@ -107,17 +114,16 @@ namespace PastingMaui.Platforms
 
             using (IEnumerator<BluetoothDevice> enumerator = bondedDevices.GetEnumerator())
             {
-                    while (enumerator.MoveNext())
-                    {
-                        btPairedDevices.Add(new BTDevice(enumerator.Current));
-                    } 
+                while (enumerator.MoveNext())
+                {
+                    btPairedDevices.Add(new BTDevice(enumerator.Current));
+                }
             }
 
             Intent intent = new Intent();
             intent.PutParcelableArrayListExtra(BondedDevicesKey, btPairedDevices);
             intent.SetAction(BondedDevicesAction);
             SendBroadcast(intent);
-
         }
 
         private class DiscoveryFinished : BroadcastReceiver
@@ -159,9 +165,8 @@ namespace PastingMaui.Platforms
             {
                 if (state == WatcherState.NOT_CREATED)
                 {
-                    SetupWatcher();
+                    AdapterOnCheck();
                 }
-
                 ScanDevices();
 
             }
@@ -185,11 +190,14 @@ namespace PastingMaui.Platforms
         public void ScanDevices()
         {
             // before discovering check if already discovering
+            Toast toast; 
 
             if (!adapter.IsDiscovering)
             {
+                GetBondedDevices();
                 state = WatcherState.SCANNING;
                 scan_success = adapter.StartDiscovery();
+                toast = Toast.MakeText(MainActivity.GetMainActivity(), "Scanning for devices", ToastLength.Short);
                 //ThreadStart start = new ThreadStart(() =>
                 //{
                 //    scanSuccess = adapter.StartDiscovery();
@@ -200,8 +208,10 @@ namespace PastingMaui.Platforms
             else
             {
                 // Display toast saying already scanning
+                toast = Toast.MakeText(MainActivity.GetMainActivity(), "Already currently scanning for devices", ToastLength.Short);
 
             }
+            toast.Show();
 
         }
 
@@ -216,6 +226,7 @@ namespace PastingMaui.Platforms
             if (!adapter.IsDiscovering)
             {
                 adapter.CancelDiscovery();
+                state = WatcherState.IDLE;
             }
         }
 

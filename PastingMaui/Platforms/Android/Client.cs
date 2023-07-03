@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using Android;
 using Android.App;
@@ -13,6 +14,7 @@ using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Java.Lang;
 using Microsoft.Maui;
+using Microsoft.Maui.Controls;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Android.CustomPerms;
 
@@ -31,9 +33,19 @@ namespace PastingMaui.Platforms
 
         public Func<Task> RefreshBTDevices
         {
-            get;
-            set;
+            set
+            {
+                if (handler != null) {
+                    discovered_devices.CollectionChanged -= handler;
+                }
+                handler = async (sender, e) => {
+                    await value();
+                };
+                discovered_devices.CollectionChanged += handler;
+            }
         }
+
+        NotifyCollectionChangedEventHandler handler;
 
         IBTScan IClient.scanner
         {
@@ -45,12 +57,36 @@ namespace PastingMaui.Platforms
             get { return devices; }
         }
 
+        public SemaphoreSlim deviceListSemaphore
+        {
+            get; private set;
+        }
+
+        public async Task ActionOnDevices(Func<Task> task)
+        {
+            await deviceListSemaphore.WaitAsync();
+            await task.Invoke(); // does whatever task that the list
+            deviceListSemaphore.Release();
+        }
+
+        public void SetupReceivers()
+        {
+            BroadcastReceiver receiver = new ScanExtras(RecieveBondedDevicesData);
+            var recieverFlags = ContextCompat.ReceiverNotExported;
+            IntentFilter filter = new (BTScanner.BondedDevicesAction);
+            filter.AddAction(BTScanner.ScanFinishedAction);
+            ContextCompat.RegisterReceiver(MainActivity.GetMainActivity(), receiver, filter, recieverFlags);
+        }
+
         public Client()
         {
             devices = new ObservableCollection<IBTDevice>();
             scannedDevices = new List<BTDevice>();
             mainActivity = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
             bluetoothStatus = PermissionStatus.Unknown;
+            deviceListSemaphore = new SemaphoreSlim(1, 1);
+
+            SetupReceivers();
         }
 
         public async void ScanDevices() {
@@ -75,25 +111,25 @@ namespace PastingMaui.Platforms
             //{
             //    return;
             //}
-
-            BroadcastReceiver receiver = new ScanExtras(RecieveBondedDevicesData);
             Activity main = MainActivity.GetMainActivity();
-            var recieverFlags = ContextCompat.ReceiverNotExported;
-            IntentFilter filter = new IntentFilter(BTScanner.BondedDevicesAction);
-            filter.AddAction(BTScanner.ScanFinishedAction);
-            ContextCompat.RegisterReceiver(main, receiver, filter, recieverFlags);
 
             //filter.AddAction($"{MauiApplication.Context.ApplicationInfo.PackageName}.{BTScanner.ScanDevicesAction}");
-
             Intent intent = new Intent(main, typeof(BTScanner));
             intent.SetAction(BTScanner.ScanDevicesAction);
+
+
+            discovered_devices.Clear(); // clears all devices after refresh
+            
+            
             ComponentName name = main.StartService(intent);
         }
 
         public void RecieveBondedDevicesData(List<BTDevice> devices)
         {
             Console.WriteLine("Data acquired");
-            devices.ForEach(d => discovered_devices.Add(d)); // should have an event that updates the UI 
+            deviceListSemaphore.Wait();
+            devices.ForEach(d => discovered_devices.Add(d)); // should have an event that updates the UI
+            deviceListSemaphore.Release();
             // on receieving device data
         }
 
@@ -175,7 +211,9 @@ namespace PastingMaui.Platforms
 
                     if (device != null && device.BondState != Bond.Bonded)
                     {
+                        client.deviceListSemaphore.Wait();
                         client.devices.Add(new BTDevice(device));
+                        client.deviceListSemaphore.Release();
                     }
 
                 }

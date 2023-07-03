@@ -39,35 +39,33 @@
         maybe method will be async / not sure -> as a Task for changing the dom
     -->
     <tbody>
-        @*@{
-            async void refreshList()
+        @{
+            async Task refreshList()
             {
-                {
-                    try{
-                        @foreach (var device in pastingApp.client.discovered_devices)
-                        {
-                            <tr>
-                                <th scope="col" class="col-3 text-truncate">
-                                @device.Name;
-                                </th>
-                                <th scope="col" class="col-4 text-truncate">
-                                @device.Id
-                                </th>
-                                <th scope="col">
-                                    <button @onclick="() => ConnectToDevice(device)" type="button" class="btn btn-primary">Connect</button>
-                                </th>
-                            </tr>
-                        }
-                    }
-                    catch(Exception e)
+                try{
+                    @foreach (var device in pastingApp.client.discovered_devices)
                     {
-                        System.Diagnostics.Debug.WriteLine("Modifying list while enumerating " + e.Message);
+                        <tr>
+                            <th scope="col" class="col-3 text-truncate">
+                            @device.Name;
+                            </th>
+                            <th scope="col" class="col-4 text-truncate">
+                            @device.Id
+                            </th>
+                            <th scope="col">
+                                <button @onclick="() => ConnectToDevice(device)" type="button" class="btn btn-primary">Connect</button>
+                            </th>
+                        </tr>
                     }
-
                 }
+                catch(Exception e)
+                {
+                    System.Diagnostics.Debug.WriteLine("Modifying list while enumerating " + e.Message);
+                }
+
             }
-            refreshList();
-        }*@
+            pastingApp.client.ActionOnDevices(refreshList);
+        }
     </tbody>
 </table>
 
@@ -90,7 +88,7 @@
         toast_service.AddToast(responseAlert);
         //await Rerender();
     }
-    
+
     //protected RenderFragment RenderToast(ToastData toastData) => (builder) =>
     //{
     //    builder.OpenComponent(0, typeof(ToastAlert));   
@@ -102,6 +100,7 @@
     {
         // scanner will remain the same after leaving page
         // so will the collection of devices
+        pastingApp.client.RefreshBTDevices = Rerender;
         pastingApp.StartScanningDevices();
         // start server too 
 
