@@ -5,7 +5,6 @@ using PastingMaui.Platforms;
 using System.Collections.ObjectModel;
 using PastingMaui.Shared;
 using System.Runtime.CompilerServices;
-using Android.Content;
 
 namespace PastingMaui;
 
@@ -53,35 +52,35 @@ public static class MauiProgram
 		return builder.Build();
 	}
 
-    public static MauiApp CreateMauiApp(Context context)
-    {
-        var builder = MauiApp.CreateBuilder();
-        builder
-            .UseMauiApp<App>()
-            .ConfigureFonts(fonts =>
-            {
-                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-            });
+//    public static MauiApp CreateMauiApp(Context context)
+//    {
+//        var builder = MauiApp.CreateBuilder();
+//        builder
+//            .UseMauiApp<App>()
+//            .ConfigureFonts(fonts =>
+//            {
+//                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+//            });
 
-        builder.Services.AddMauiBlazorWebView();
-        //builder.Services.AddSingleton<IClient, Client>();
-        //builder.Services.AddSingleton<IServer, Server>();
-        builder.Services.AddSingleton<IPasting, PastingApp>(new Func<IServiceProvider, PastingApp>((provider) =>
-        {
-            return new PastingApp(context);
-        }));
-        builder.Services.AddSingleton<ToastService>();
-        /*builder.Services.AddSingleton<ToastData()>;*/
-        /*builder.Services.AddTransient<IBTScan, BTScanner>();*/
+//        builder.Services.AddMauiBlazorWebView();
+//        //builder.Services.AddSingleton<IClient, Client>();
+//        //builder.Services.AddSingleton<IServer, Server>();
+//        builder.Services.AddSingleton<IPasting, PastingApp>(new Func<IServiceProvider, PastingApp>((provider) =>
+//        {
+//            return new PastingApp(context);
+//        }));
+//        builder.Services.AddSingleton<ToastService>();
+//        /*builder.Services.AddSingleton<ToastData()>;*/
+//        /*builder.Services.AddTransient<IBTScan, BTScanner>();*/
 
-#if DEBUG
-        builder.Services.AddBlazorWebViewDeveloperTools();
-        builder.Logging.AddDebug();
-#endif
+//#if DEBUG
+//        builder.Services.AddBlazorWebViewDeveloperTools();
+//        builder.Logging.AddDebug();
+//#endif
 
-        builder.Services.AddSingleton<WeatherForecastService>();
+//        builder.Services.AddSingleton<WeatherForecastService>();
 
-        return builder.Build();
-    }
+//        return builder.Build();
+//    }
 
 }

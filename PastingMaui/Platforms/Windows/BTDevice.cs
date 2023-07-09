@@ -10,20 +10,22 @@ using Windows.Foundation;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Rfcomm;
 using PastingMaui.Shared;
-using Windows.Storage.Streams;
 using Windows.Networking.Sockets;
 using System.IO;
+using Windows.Devices.PointOfService.Provider;
+using WindowsStreams = Windows.Storage.Streams;
+using Windows.Storage.Streams;
 
 namespace PastingMaui.Platforms
 {
-    internal class BTDevice : IBTDevice, INotifyPropertyChanged
+    internal class BTDevice : IBTDevice /*INotifyPropertyChanged*/
         // todo: rename BTDevice to DiscoveredDevice
     {
 
         // add static delegate for the event of a property 
-        public static PropertyChangedEventHandler UpdateUi = async (object device, PropertyChangedEventArgs args) => { 
-            await RefreshDevice.Invoke();
-        };
+        //public static PropertyChangedEventHandler UpdateUi = async (object device, PropertyChangedEventArgs args) => { 
+        //    await RefreshDevice.Invoke();
+        //};
 
         private DeviceInformation deviceInfo;
 
@@ -46,7 +48,7 @@ namespace PastingMaui.Platforms
         
         public BTDevice(DeviceInformation info) {
             deviceInfo = info;
-            PropertyChanged += UpdateUi;
+            //PropertyChanged += UpdateUi;
             /*
              * Back up lambda method for updates where each object would have a different function
              * (async (obj, args) =>
@@ -55,14 +57,14 @@ namespace PastingMaui.Platforms
             });*/
         }
 
-        public override string Id
+        public string Id
         {
             get {
                 return deviceInfo.Id;
             } 
         }
 
-        public override string Name
+        public string Name
         {
             get
             {
@@ -70,13 +72,15 @@ namespace PastingMaui.Platforms
             }
         }
 
-        public override string Type
+        public string Type
         {
             get
             {
                 throw new NotImplementedException();
             }
         }
+
+        public static object RefreshDevice { get; private set; }
 
         /*public override string Name
         {
@@ -110,7 +114,7 @@ namespace PastingMaui.Platforms
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Device Updated."));
         }
 
-        public override async Task<ToastData> Connect(IBTScan scanner)
+        public async Task<ToastData> Connect(IClient client)
         {
             if (deviceInfo == null)
             { // no device to be connected to, missing information
@@ -185,16 +189,18 @@ namespace PastingMaui.Platforms
             }
 
             socket = new StreamSocket();
-            attrReader.UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8;
+            attrReader.UnicodeEncoding = WindowsStreams.UnicodeEncoding.Utf8;
 
             try
             {
-
                 await socket.ConnectAsync(pasteService.ConnectionHostName, pasteService.ConnectionServiceName);
+                StreamReader reader = new StreamReader(socket.OutputStream.AsStreamForWrite());
                 dataWriter = new DataWriter(socket.OutputStream);
                 dataReader = new DataReader(socket.InputStream);
-                scanner.StopScan();
-                ReadLoop(dataReader, scanner);
+                PastingApp.app.client.deviceScanner.StopScan();
+
+                //client.SetConnectedDevice(this);
+                ReadLoop(dataReader, PastingApp.app.client.deviceScanner);
 
             }
             catch (Exception e) when ((uint)e.HResult == 0x80070490) // service not found 
@@ -280,14 +286,14 @@ namespace PastingMaui.Platforms
 
                 if (disconnected)
                 {
-                    Disconnect(scanner);
+                    Disconnect();
                     return;
                     // notify user about the disconnection
                 }
             }
         }
 
-        public override void Disconnect(IBTScan scanner)
+        public void Disconnect()
         {
             if (dataWriter != null)
             {
@@ -300,20 +306,23 @@ namespace PastingMaui.Platforms
                 pasteService.Dispose();
                 pasteService = null;
             }
-
-            scanner.ScanDevices();
         }
 
-        public override bool IsConnected()
+        public bool IsConnected()
         {
             
             throw new NotImplementedException();
         }
 
-        public override bool Pair()
+        public bool Pair()
         {
 
             throw new NotImplementedException();
         }
+
+        //public Task<ToastData> Connect(IClient scanner)
+        //{
+        //    throw new NotImplementedException();
+        //}
     }
 }

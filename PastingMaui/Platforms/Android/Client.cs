@@ -47,6 +47,8 @@ namespace PastingMaui.Platforms
 
         NotifyCollectionChangedEventHandler handler;
 
+        public IBTDevice ConnectedDevice; 
+
         IBTScan IClient.scanner
         {
             get { return scanner; }
@@ -60,6 +62,12 @@ namespace PastingMaui.Platforms
         public SemaphoreSlim deviceListSemaphore
         {
             get; private set;
+        }
+        IBTDevice IClient.ConnectedDevice { get; }
+
+        public void SetConnectedDevice(IBTDevice device)
+        {
+            ConnectedDevice = device;
         }
 
         public async Task ActionOnDevices(Func<Task> task)

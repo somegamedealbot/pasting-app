@@ -30,7 +30,7 @@ namespace PastingMaui.Platforms.Android
                         int preDataSize = sizeof(uint) + 1;
                         totalReadCount -= (uint)preDataSize;
                         initialRead = false;
-                        // make sure file extension
+                        // make sure to check for file signature for the first run through
 
                         // decide to save to file or display data
                     }

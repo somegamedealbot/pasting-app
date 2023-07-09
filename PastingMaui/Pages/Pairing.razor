@@ -84,7 +84,7 @@
         toast_service.AddToast(alert);
         // toastDatas.Add(alert);
         // await Rerender();
-        ToastData responseAlert = await device.Connect(pastingApp.client.scanner);
+        ToastData responseAlert = await device.Connect(pastingApp.client);
         toast_service.AddToast(responseAlert);
         //await Rerender();
     }

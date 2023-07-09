@@ -33,5 +33,12 @@ namespace PastingMaui.Data
         // Task instead of async
         public Task ActionOnDevices(Func<Task> task);
 
+        public IBTDevice ConnectedDevice
+        {
+            get;
+        }
+
+        public void SetConnectedDevice(IBTDevice device);
+
     }
 }

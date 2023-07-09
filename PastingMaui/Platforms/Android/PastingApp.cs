@@ -5,6 +5,7 @@ using Android.Content;
 using Android.Content.PM;
 using AndroidX.Core.Content;
 using PastingMaui.Data;
+using PastingMaui.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace PastingMaui.Platforms
     {
 
         public Client appClient;
+        private ToastService _toast_service;
         public Server appServer;
         public static PastingApp app
         {
@@ -27,21 +29,17 @@ namespace PastingMaui.Platforms
         public PastingApp()
         {
             app = this;
-        }
-
-        public PastingApp(Context context)
-        {
-            // ask for permission here
-            //Intent clientIntent = new(Application.Context, typeof(Client));
-            //Application.Context.StartActivity(clientIntent);
-            //appServer = new Server(context);
-            // https://github.com/android/connectivity-samples/issues/263#issuecomment-1100650576
-            // use for requsting bluetooth permission
-
-
             appClient = new Client();
-            // create server here
+            // appServer = new Server();
         }
+
+        //public PastingApp(ToastService service)
+        //{
+        //    _toast_service = service;
+        //    app = this;
+        //    appClient = new Client();
+        //    // appServer = new Server();
+        //}
 
         IServer IPasting.server {
             get

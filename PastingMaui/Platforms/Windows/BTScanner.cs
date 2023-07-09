@@ -71,7 +71,7 @@ namespace PastingMaui.Platforms
                         btDevicesCollection.Add(new BTDevice(deviceInfo));
                     }
                 }
-                await RefreshBTDevices();
+                //await RefreshBTDevices();
                 //await RefreshBTDevices();
 
             });
@@ -101,7 +101,7 @@ namespace PastingMaui.Platforms
                     }
                 }
 
-                await RefreshBTDevices();
+                //await RefreshBTDevices();
 
             });
 
@@ -125,7 +125,7 @@ namespace PastingMaui.Platforms
                                 break;
                             }
                         }
-                        await RefreshBTDevices();
+                        //await RefreshBTDevices();
                         
                     }
                 }
@@ -135,14 +135,14 @@ namespace PastingMaui.Platforms
             watcher.EnumerationCompleted += new TypedEventHandler<DeviceWatcher, object>(async (watcher, obj) =>
             {
                 // when enumeration is done
-                await RefreshBTDevices();
+                //await RefreshBTDevices();
             });
 
             watcher.Stopped += new TypedEventHandler<DeviceWatcher, object>(async (watcher, obj) =>
             {
                 // when enumeration is stopped
                 //btDevicesCollection.Clear();
-                await RefreshBTDevices();
+                //await RefreshBTDevices();
 
             });
         }
@@ -191,7 +191,7 @@ namespace PastingMaui.Platforms
 
         public void ConnectToDevice(IBTDevice device)
         {
-            device.Connect(this);
+            device.Connect(PastingApp.app.client);
         }
 
         public bool isScanning()

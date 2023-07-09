@@ -31,6 +31,7 @@ namespace PastingMaui.Platforms
         public static readonly int ENABLE_BLUETOOTH_REQ_CODE = 567;
         public static readonly string EnableBluetoothResult = "ENABLE_BLUETOOTH_RESULT";
         public static readonly string BondedDevicesAction = "BONDED_DEVICES";
+        public static readonly string StopScanAction = "STOP_SCAN";
 
         public static readonly string BondedDevicesKey = "bonded devices";
 
@@ -170,8 +171,9 @@ namespace PastingMaui.Platforms
                 ScanDevices();
 
             }
-            else if (intent.Action == SetupReceiversAction)
+            else if (intent.Action == StopScanAction)
             {
+                StopScan();
                 // unpack the receivers
                 // set them up
             }
@@ -238,7 +240,7 @@ namespace PastingMaui.Platforms
         void IBTScan.ConnectToDevice(IBTDevice device)
         {
             Task.Run(async () => {
-                await device.Connect(this);
+                await device.Connect(PastingApp.getApp().appClient);
             });
         }
 

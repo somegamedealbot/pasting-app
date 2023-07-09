@@ -19,10 +19,10 @@ namespace PastingMaui.Data
 
         public string Type { get; }
 
-        public Task<ToastData> Connect(IBTScan scanner);
+        public Task<ToastData> Connect(IClient scanner);
         // returns if failiure or success
 
-        public void Disconnect(IBTScan scanner);
+        public void Disconnect();
 
         public bool IsConnected();
 
