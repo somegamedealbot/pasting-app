@@ -1,10 +1,8 @@
-﻿@page "/pairing"
-
-@using System.Collections.ObjectModel
+﻿@using System.Collections.ObjectModel
 @using PastingMaui
 @using Data
 @using System.Collections.Concurrent
-@inject ToastService toast_service
+@inject IToastService toast_service
 @inject IPasting pastingApp
 @*@inject IServer server*@
 
@@ -35,6 +33,7 @@
             </th>
         </tr>
     </thead>
+
     <!-- Write method here that will run after an change is detected in discovered_devices
         maybe method will be async / not sure -> as a Task for changing the dom
     -->
@@ -84,7 +83,7 @@
         toast_service.AddToast(alert);
         // toastDatas.Add(alert);
         // await Rerender();
-        ToastData responseAlert = await device.Connect(pastingApp.client);
+        ToastData responseAlert = await Task.Run(() => device.Connect(pastingApp.client));
         toast_service.AddToast(responseAlert);
         //await Rerender();
     }
@@ -101,7 +100,10 @@
         // scanner will remain the same after leaving page
         // so will the collection of devices
         pastingApp.client.RefreshBTDevices = Rerender;
-        pastingApp.StartScanningDevices();
+        if (!pastingApp.client.IsScanning)
+        {
+            pastingApp.StartScanningDevices();
+        }
         // start server too 
 
 

@@ -1,16 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Windows.Devices.Bluetooth;
-using Windows.Devices.Bluetooth.Rfcomm;
-using Windows.Devices.Enumeration;
+﻿using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using System.Collections.ObjectModel;
-using Microsoft.Maui.Devices;
 using PastingMaui.Data;
-using Microsoft.Maui.Controls;
 
 namespace PastingMaui.Platforms
 {
@@ -46,7 +37,7 @@ namespace PastingMaui.Platforms
             string[] requestedProperties = { "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.IsConnected", "System.Devices.Aep.CanPair", "System.Devices.Aep.IsPresent" };
 
             //string[] requestedProperties = { "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.IsConnected, System.Devices.Aep.CanPair, System.Devices.Aep.IsPaired, System.Devices.Aep.IsPresent, System.Devices.Aep.IsConnected" };
-
+            //bb7bb05e-5972-42b5-94fc-76eaa7084d49
             //var watcher = DeviceInformation.CreateWatcher("System.Devices.Aep.ProtocolId:=\"{e0cbf06c-cd8b-4647-bb8a-263b43f0f974}\" AND " +
             //    "System.Devices.AepService.ServiceClassId:=\"{00000003-0000-1000-8000-00805F9B34FB}\"", requestedProperties, DeviceInformationKind.AssociationEndpoint);
 
@@ -58,19 +49,18 @@ namespace PastingMaui.Platforms
           
             // rfcomm service ID: 00000003-0000-1000-8000-00805F9B34FB
             
-
             // handler when a new device is discovered
             // handler will run async if no await
             watcher.Added += new TypedEventHandler<DeviceWatcher, DeviceInformation>(async (watcher, deviceInfo) =>
             {
                 // Do things here when a new device is 
-                if (deviceInfo.Properties.TryGetValue("System.Devices.Aep.IsPresent", out dynamic Boolean))
-                {
-                    if (Boolean == true)
-                    {
+                //if (deviceInfo.Properties.TryGetValue("System.Devices.Aep.IsPresent", out dynamic Boolean))
+                //{
+                //    if (Boolean == true)
+                //    {
                         btDevicesCollection.Add(new BTDevice(deviceInfo));
-                    }
-                }
+                    //}
+                //}
                 //await RefreshBTDevices();
                 //await RefreshBTDevices();
 
@@ -80,10 +70,10 @@ namespace PastingMaui.Platforms
             {
                 // Do things when a device is removed from discovery
 
-                if (update.Properties.TryGetValue("System.Devices.Aep.IsPresent", out dynamic Boolean))
-                {
-                    if (Boolean == true)
-                    {
+                //if (update.Properties.TryGetValue("System.Devices.Aep.IsPresent", out dynamic Boolean))
+                //{
+                //    if (Boolean == true)
+                //    {
                         bool DeviceRemoved = false;
                         int index = 0;
                         while (!DeviceRemoved && index < btDevicesCollection.Count)
@@ -98,8 +88,8 @@ namespace PastingMaui.Platforms
                             index++;
 
                         }
-                    }
-                }
+                //    }
+                //}
 
                 //await RefreshBTDevices();
 
@@ -109,10 +99,10 @@ namespace PastingMaui.Platforms
             {
                 // Update the specific device that updated with newly updated information
 
-                if (update.Properties.TryGetValue("System.Devices.Aep.IsPresent", out dynamic Boolean))
-                {
-                    if (Boolean == true)
-                    {
+                //if (update.Properties.TryGetValue("System.Devices.Aep.IsPresent", out dynamic Boolean))
+                //{
+                //    if (Boolean == true)
+                //    {
                         var tempEnumerableDevices = btDevicesCollection.Cast<BTDevice>();
                         // cast should not create new objects but objects should remain the same in original colleciton
 
@@ -127,8 +117,8 @@ namespace PastingMaui.Platforms
                         }
                         //await RefreshBTDevices();
                         
-                    }
-                }
+                //    }
+                //}
 
             });
 
@@ -158,7 +148,6 @@ namespace PastingMaui.Platforms
                     BTDeviceWatcher.Stop();
                 }
             }
-            BTDeviceWatcher= null;
         }
 
         public void RestartScan()

@@ -63,7 +63,11 @@ namespace PastingMaui.Platforms
         {
             get; private set;
         }
-        IBTDevice IClient.ConnectedDevice { get; }
+        IBTDevice IClient.ConnectedDevice { get { return ConnectedDevice; } }
+
+        static bool isScanning;
+        bool IClient.IsScanning { get { return isScanning; }}
+
 
         public void SetConnectedDevice(IBTDevice device)
         {
@@ -95,6 +99,15 @@ namespace PastingMaui.Platforms
             deviceListSemaphore = new SemaphoreSlim(1, 1);
 
             SetupReceivers();
+        }
+
+        public static void StopScanning()
+        {
+            Activity main = MainActivity.GetMainActivity();
+            Intent intent = new Intent(main, typeof(BTScanner));
+            intent.SetAction(BTScanner.StopScanAction);
+            ComponentName name = main.StartService(intent);
+            isScanning = false;
         }
 
         public async void ScanDevices() {
@@ -130,6 +143,9 @@ namespace PastingMaui.Platforms
             
             
             ComponentName name = main.StartService(intent);
+            isScanning = true;
+            
+            
         }
 
         public void RecieveBondedDevicesData(List<BTDevice> devices)
@@ -139,6 +155,11 @@ namespace PastingMaui.Platforms
             devices.ForEach(d => discovered_devices.Add(d)); // should have an event that updates the UI
             deviceListSemaphore.Release();
             // on receieving device data
+        }
+
+        public void RemoveConnectedDevice()
+        {
+            ConnectedDevice = ConnectedDevice == null ? throw new System.Exception("Cannot remove null Connected Device") : null;
         }
 
         private BTScanner scanner;
@@ -186,12 +207,12 @@ namespace PastingMaui.Platforms
                 }
                 else if (action.Equals(BTScanner.ScanFinishedAction))
                 {
+                    isScanning = false;
                     Console.WriteLine("BTScan finished");
                 }
 
             }
         }
-
 
         public class DiscoveryAction : BroadcastReceiver
         {

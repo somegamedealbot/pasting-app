@@ -1,14 +1,5 @@
-﻿using Microsoft.Maui.Controls.PlatformConfiguration;
-using Microsoft.VisualBasic;
-using PastingMaui.Data;
+﻿using PastingMaui.Data;
 using PastingMaui.Platforms.Windows;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Windows.ApplicationModel.DataTransfer;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Rfcomm;
 using Windows.Networking.Sockets;
@@ -23,11 +14,13 @@ namespace PastingMaui.Platforms
         RfcommServiceProvider provider;
         StreamSocketListener socketListener;
         StreamSocket socket;
-        DataWriter dataWriter;
-        DataReader dataReader;
+        BluetoothDevice btDevice;
+        BTDevice deviceInfo;
 
-        Thread readThread;
-        Thread writeThread;
+        IOHandler handler;
+
+        bool ServerRunning;
+        bool ServerEnabled;
 
         public class OnReadThreadEndArgs : EventArgs
         { 
@@ -57,14 +50,22 @@ namespace PastingMaui.Platforms
                 // warn user here with ui
                 return;
             }
-            
-            // sort out sockets
-            socketListener = new StreamSocketListener();
-            socketListener.ConnectionReceived += SocketConnect;
-
-            await socketListener.BindServiceNameAsync(provider.ServiceId.AsString(), SocketProtectionLevel.BluetoothEncryptionAllowNullAuthentication);
 
             InitSDPAttributes(provider);
+
+            await StartServer();
+
+            // started to listen to connections
+        }
+
+        public async Task StartServer()
+        {
+            if (ServerRunning) // server already running
+            {
+                return;
+            }
+
+            await StartListeningSocket();
 
             // advertising
             try
@@ -74,9 +75,31 @@ namespace PastingMaui.Platforms
             catch (Exception ex)
             {
                 // notify usre about the error here with ui
+                PastingApp.app._toast_service.
+                    AddToast("Error Starting Server", "Could not start advertising device", Shared.ToastType.Alert);
             }
+        }
 
-            // started to listen to connections
+        public async Task StartListeningSocket()
+        {
+            socketListener = new StreamSocketListener();
+            socketListener.ConnectionReceived += SocketConnect;
+
+            await socketListener.BindServiceNameAsync(provider.ServiceId.AsString(), SocketProtectionLevel.BluetoothEncryptionAllowNullAuthentication);
+        }
+
+        public void SetupReadWriteHandlers()
+        {
+            handler.OnReadThreadEnd += (sender, args) =>
+            {
+                PastingApp.app._toast_service.
+                    AddToast("Disconnected", "Successfully received a connection", Shared.ToastType.Alert);
+            };
+            handler.OnWriteThreadEnd += (sender, args) =>
+            {
+                PastingApp.app._toast_service.
+                    AddToast("Sent Data", "Successfully sent data", Shared.ToastType.Alert);
+            };
         }
 
         void InitSDPAttributes(RfcommServiceProvider provider)
@@ -92,71 +115,14 @@ namespace PastingMaui.Platforms
             provider.SdpRawAttributes.Add(ServiceConfig.sdpServiceAttributeId, writer.DetachBuffer());
         }
 
-        void Disconnect()
-        {
-            // remove connection
-            // reset all fields
-            if (provider != null)
-            {
-                provider.StopAdvertising();
-                provider = null;
-            }
+        public void StopServer() {
+            provider.StopAdvertising();
 
-            if (socketListener != null)
-            {
-                socketListener.Dispose();
-                socketListener = null; 
-            }
-
-            if (socket != null)
-            {
-                socket.Dispose();
-                socket = null;
-            }
-
-            if (dataWriter != null)
-            {
-                dataWriter.DetachStream();
-                dataWriter = null;
-            }
-
-            if (dataReader != null)
-            {
-                dataReader.DetachStream();
-                dataReader = null;
-            }
-
-            // disconnected from client
         }
 
-        async void sendInfo(IBuffer buffer, int type)
+        private void SetHandler(StreamSocket socket, BTDevice device)
         {
-            if (buffer.Length > 0)
-            {
-                if (dataWriter != null)
-                {
-                    try
-                    {
-                        // write
-                        dataWriter.WriteByte((byte)type);
-                        dataWriter.WriteBuffer(buffer);
-
-                        await dataWriter.StoreAsync();
-                    }
-                    catch(Exception ex)
-                    {
-                        // handle exception here
-                    }
-
-                }
-                else
-                {
-                    // no client is connected
-                }
-
-            }
-
-
+            handler = new IOHandler(device, socket);
         }
 
         /*
@@ -177,80 +143,26 @@ namespace PastingMaui.Platforms
                 // notify error
 
                 // disconnect from client
-                Disconnect();
-                
-
+                PastingApp.app._toast_service.
+                    AddToast("Failed connection from client", "Error connecting to client", Shared.ToastType.Alert);
+                socket.Dispose();
                 return;
             }
 
             // after verifying socket, change the UI
 
             // loop to read content sent
-            var device = await BluetoothDevice.FromHostNameAsync(socket.Information.RemoteHostName);
+            btDevice = await BluetoothDevice.FromHostNameAsync(socket.Information.RemoteHostName);
+            deviceInfo = new BTDevice(btDevice.DeviceInformation);
+            //PastingApp.app.StopServicesOnConnect();
+            //StopServer();
+            //PastingApp.app.client.deviceScanner.StopScan();
+            PastingApp.app.StopServicesOnConnect();
+            //PastingApp.app.StopServicesOnConnect();
+            PastingApp.app.SetConnectedDevice(deviceInfo, socket);
+            SetHandler(socket, deviceInfo);
+            SetupReadWriteHandlers();
 
-            dataWriter = new DataWriter(socket.OutputStream);
-            dataReader = new DataReader(socket.InputStream);
-
-            // now connected to the client
-
-            // assign new thread to read info
-            readThread = new Thread(() =>
-            {
-                IOHandler.ReadLoop(dataReader, PastingApp.app.client.deviceScanner);
-                OnReadThreadEnd?.Invoke(this, null);
-            });
-
-            writeThread = new Thread(() =>
-            {
-                // write loop
-            });
-            readThread.Start();
-            writeThread.Start();
-
-            // display socket statistics using socket.Information
-
-            //while (true)
-            //{
-            //    IBuffer buffer;
-            //    bool disconnected = false;
-
-            //    try
-            //    {
-            //        byte type = dataReader.ReadByte(); // type of info
-
-            //        // 32 bit integer
-            //        int dataSize = dataReader.ReadInt32();
-            //        var readCount = await dataReader.LoadAsync((uint)dataSize);
-
-
-            //        if (readCount < dataSize)
-            //        {
-            //            // data was cut off, or connection was lost
-
-            //            // cut connection
-            //            disconnected = true;
-
-            //            // notify user that connection was broken
-            //        }
-
-            //        buffer = dataReader.ReadBuffer(readCount);
-
-            //        // save file to folder location
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        // handle exception here 
-            //    }
-
-            //    if (disconnected)
-            //    {
-            //        Disconnect();
-
-            //        // notify user about the disconnection
-            //    }
-
-            //}
-            
         }
     }
 }

@@ -1,23 +1,13 @@
 ﻿using Android.App;
 using Android.Bluetooth;
 using Android.Content;
-using Android.Database;
 using Android.OS;
 using Android.Widget;
-using AndroidX.VersionedParcelable;
 using Java.Interop;
-using Java.IO;
-using Java.Nio;
-using Java.Security;
 using Java.Util;
-using Org.Apache.Http.Client;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Android;
 using PastingMaui.Shared;
-using System;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Runtime.ConstrainedExecution;
 using AndroidToast = Android.Widget.Toast;
 
 namespace PastingMaui.Platforms
@@ -54,9 +44,6 @@ namespace PastingMaui.Platforms
         }
 
         private BluetoothSocket socket;
-        System.IO.Stream inStream;
-        System.IO.Stream outStream;
-        string socketType = String.Empty;
         bool secure;
         private bool disposedValue;
 
@@ -75,15 +62,18 @@ namespace PastingMaui.Platforms
         {
             // read BluetoothDevice
             device = parcel.ReadTypedObject(BluetoothDevice.Creator).JavaCast<BluetoothDevice>();
-            secure = true;
+            secure = true; // turn back to secure
+        }
+
+        public void RunOnUIThread(Action action)
+        {
+            MainActivity.GetMainActivity().RunOnUiThread(action);
         }
 
         // connect to a device (server)
         public async Task<ToastData> Connect(IClient client)
         {
-            socketType = secure ? "Secure" : "Insecure";
             UUID convertedUuid = UUID.FromString(ServiceConfig.serviceUuidString);
-            AndroidToast toast;
             
             try
             {
@@ -100,16 +90,15 @@ namespace PastingMaui.Platforms
             {
                 socket.Dispose();
                 socket = null;
-                toast = AndroidToast.MakeText(MainActivity.GetMainActivity(), "Failed to connect: something went wrong when connecitng to sockets", ToastLength.Short);
-                toast.Show();
+                RunOnUIThread(() => PastingApp.ToastMaker.MakeAndShowToast("Failed to make Server: something went wrong when creating a listening socket"));
+                //toast = AndroidToast.MakeText(MainActivity.GetMainActivity(), "Failed to connect: something went wrong when connecitng to sockets", ToastLength.Short);
+                //toast.Show();
                 return new ToastData("Failed to connect", "Something went wrong when connecting socket", ToastType.Alert);
             }
 
             // send signal to cancel Discovery
-            Activity main = MainActivity.GetMainActivity();
-            Intent intent = new Intent(main, typeof(BTScanner));
-            intent.SetAction(BTScanner.StopScanAction);
-            ComponentName name = main.StartService(intent);
+            PastingApp.app.StopServicesOnConnect();
+
             try
             {
                 socket.Connect();
@@ -118,39 +107,33 @@ namespace PastingMaui.Platforms
             {
                 socket.Dispose();
                 socket = null;
+                return new ToastData("Failed to connect", $"Make sure that {device.Name} is currently running the app", ToastType.Alert);
             }
-
-            //try
-            //{
-            //    await socket.ConnectAsync(); // attempt connection
-
-            //}
-            //catch(Exception e)
-            //{
-
-            //}
-
             // have input and outputs streams
             if (socket.IsConnected)
             {
-                inStream = socket.InputStream;
-                outStream = socket.OutputStream;
                 client.SetConnectedDevice(this);
-
+                RunOnUIThread(() => 
+                    PastingApp.app.SetConnectedDevice(this, socket));
             }
             else
             {
+                PastingApp.app.StartServices();
                 return new ToastData("Failed to connect", $"Make sure that {device.Name} is currently running the app", ToastType.Alert);
+                // restart services
             }
-
-            toast = AndroidToast.MakeText(MainActivity.GetMainActivity(), $"Connected! Successfully connected to {device.Name}", ToastLength.Short);
+            RunOnUIThread(
+                () => PastingApp.ToastMaker.MakeAndShowToast($"Connected! Successfully connected to {device.Name}"));
             return new ToastData("Connected!", $"Successfully connected to {device.Name}", ToastType.Alert);
 
         }
 
-        public void Disconnect(IBTScan scanner)
+        public void Disconnect(IClient client)
         {
-            throw new NotImplementedException();
+            // operations for the disconnection
+
+            client.RemoveConnectedDevice();
+            PastingApp.app.RemoveConnectedDevice();
         }
 
         public bool IsConnected()
@@ -182,10 +165,6 @@ namespace PastingMaui.Platforms
             dest.WriteTypedObject(device, flags);
         }
 
-        public void Disconnect()
-        {
-            throw new NotImplementedException();
-        }
     }
 
     public class BTDeviceCreator : Java.Lang.Object, IParcelableCreator

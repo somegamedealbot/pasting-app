@@ -15,7 +15,6 @@ public partial class App : Application
     //	MainPage = new MainPage();
     //	BTDeviceScanner = scanner;
     //}
-
     public App()
     {
         InitializeComponent();

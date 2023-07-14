@@ -7,7 +7,7 @@ using PastingMaui.Shared;
 // data model for devices
 namespace PastingMaui.Data
 {
-    public interface IBTDevice
+    public interface IBTDevice /*: IDisposable*/
     {
         public static Func<Task> RefreshDevice;
 
@@ -22,7 +22,7 @@ namespace PastingMaui.Data
         public Task<ToastData> Connect(IClient scanner);
         // returns if failiure or success
 
-        public void Disconnect();
+        public void Disconnect(IClient client);
 
         public bool IsConnected();
 

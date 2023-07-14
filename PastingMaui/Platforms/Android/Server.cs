@@ -1,13 +1,10 @@
 ﻿using Android.Bluetooth;
 using Android.Content;
+using Android.Runtime;
 using Java.Util;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Android;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using AndroidToast = Android.Widget.Toast;
 
 namespace PastingMaui.Platforms
 {
@@ -16,29 +13,67 @@ namespace PastingMaui.Platforms
         public Server(Context context) { }
 
         BluetoothAdapter adapter;
+        BluetoothManager manager;
         private BluetoothServerSocket socket;
-        System.IO.Stream inStream;
-        System.IO.Stream outStream;
+        IOHandler handler;
         string socketType = string.Empty;
+        BTDevice device;
         bool isSecure;
 
-        public Server(BluetoothAdapter btAdapter, bool secure) {
-            adapter = btAdapter;
-            isSecure = secure; 
-            InitServer(secure);
+        private class PastingProfile : Java.Lang.Object, IBluetoothProfile
+        {
+            public IList<BluetoothDevice> ConnectedDevices => throw new NotImplementedException();
+
+            [return: GeneratedEnum]
+            public ProfileState GetConnectionState(BluetoothDevice device)
+            {
+                throw new NotImplementedException();
+            }
+
+            public IList<BluetoothDevice> GetDevicesMatchingConnectionStates([GeneratedEnum] ProfileState[] states)
+            {
+                throw new NotImplementedException();
+            }
+        }
+        IBluetoothProfile profile;
+
+        public Server() {
+            manager = ((BluetoothManager)MauiApplication.Context.GetSystemService(Context.BluetoothService));
+            adapter = manager.Adapter;
+            isSecure = true;
+            Task.Run(() => InitServer());
         }
 
-        public void InitServer(bool secure)
+        public async Task InitServer()
         {
+            // advertise the device
+
             // start listening for connections
+
+            await StartServer();
+
+            // send here to read loop
+            // write the reader to be used either in the server or the client
+            // it can executed on another thread (optional)
+
+            // same with writer
+        }
+
+        public async Task StartServer()
+        {
+            if (socket is not null) {
+                return;
+            }
             try
             {
-                socketType = secure ? "Secure" : "Insecure";
+                socketType = "Secure";
                 UUID uuid = UUID.FromString(ServiceConfig.serviceUuidString);
-                if (secure)
+                if (isSecure)
                 {
+                    
                     socket = adapter
                         .ListenUsingRfcommWithServiceRecord(ServiceConfig.SdpServiceName, uuid);
+                       // get uuids here to see if its registered
                 }
                 else
                 {
@@ -54,38 +89,41 @@ namespace PastingMaui.Platforms
                     socket.Dispose();
                     socket = null;
                     socketType = string.Empty;
-
+                    throw;
                 }
                 // Write exception here
             }
 
-            // send here to read loop
-            // write the reader to be used either in the server or the client
-            // it can executed on another thread (optional)
-
-            Thread thread = new Thread(new ThreadStart(async () =>
-            {
-                await IOHandler.ReadLoop(inStream);
-            }));
-
-            thread.Start();
-
-            // same with writer
+            await AcceptConnection();
 
         }
 
-        public Task InitServer()
+        public async Task AcceptConnection()
         {
-            throw new NotImplementedException();
+            BluetoothSocket btSocket = await socket.AcceptAsync(); // temporary, when the rest of ui is make use the method with a timeout
+
+            if (btSocket.IsConnected)
+            {
+                PastingApp.app.StopServicesOnConnect();
+                device = new BTDevice(btSocket.RemoteDevice);
+                SetIOHandler(btSocket, device);
+                //handler.StartReadThread();
+                PastingApp.app.SetConnectedDevice(device, btSocket);
+                PastingApp.ToastMaker.MakeAndShowToast("Connected to device");
+            }
         }
 
-        public void sendData()
+        public void StopServer()
         {
-            Thread thread = new Thread(new ThreadStart(async () =>
-            {
-                //await IOHandler.WriteData(outStream, isSecure, data, Size);
+            socket.Close();
+            socket = null;
+            //handler?.Dispose();
+        }
 
-            }));
+        private void SetIOHandler(BluetoothSocket socket, BTDevice btDevice)
+        {
+            //handler?.Dispose();
+            handler = new IOHandler(btDevice, socket);
         }
 
     }

@@ -47,5 +47,10 @@ namespace PastingMaui.Platforms
         {
             throw new NotImplementedException();
         }
+
+        public bool isScanning()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

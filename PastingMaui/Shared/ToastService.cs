@@ -3,17 +3,24 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PastingMaui.Shared
 {
-    internal class ToastService
+    internal class ToastService : IToastService
     {
+
+        SemaphoreSlim toastListSema = new SemaphoreSlim(1);
+
         private ObservableCollection<ToastData> toasts;
 
         public ObservableCollection<ToastData> Toasts { get { return toasts; } }
+
+        public void EnumerateToasts(Action<ObservableCollection<ToastData>> action)
+        {
+            toastListSema.Wait();
+            action.Invoke(toasts);
+            toastListSema.Release();
+        }
 
         public ToastService() { 
             toasts = new ObservableCollection<ToastData>();
@@ -46,17 +53,25 @@ namespace PastingMaui.Shared
 
         public void InitializeToast(ToastData toast)
         {
-            toasts.Add(toast);
             toast.deleteToast += () =>
             {
+                toastListSema.Wait();
                 toasts.Remove(toast);
+                toastListSema.Release();
             };
             toast.PropertyChanged += UpdateRendered;
+
+            toastListSema.Wait();
+            toasts.Add(toast);
+            toastListSema.Release();
         }
 
         public ToastData GetToastById(string id)
         {
-            return toasts.Where(toast => toast.Id.Equals(id)).FirstOrDefault();
+            toastListSema.Wait();
+            var toast = toasts.Where(toast => toast.Id.Equals(id)).FirstOrDefault();
+            toastListSema.Release();
+            return toast;
         }
 
         public void UpdateToast(string id)
@@ -75,7 +90,9 @@ namespace PastingMaui.Shared
             var toastFound = GetToastById(id);
             if (toastFound != null)
             {
+                toastListSema.Wait();
                 toasts.Remove(toastFound);
+                toastListSema.Release();
             }
         }
 

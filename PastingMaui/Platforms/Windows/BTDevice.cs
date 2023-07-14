@@ -1,20 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel;
 using Windows.Devices.Enumeration;
 using PastingMaui.Data;
-using Windows.Foundation;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Rfcomm;
 using PastingMaui.Shared;
 using Windows.Networking.Sockets;
-using System.IO;
-using Windows.Devices.PointOfService.Provider;
-using WindowsStreams = Windows.Storage.Streams;
 using Windows.Storage.Streams;
+using System;
+using utf = Windows.Storage.Streams.UnicodeEncoding;
 
 namespace PastingMaui.Platforms
 {
@@ -32,11 +25,6 @@ namespace PastingMaui.Platforms
         private BluetoothDevice bluetoothDevice;
 
         private RfcommDeviceService pasteService;
-
-        private StreamSocket socket;
-
-        private DataWriter dataWriter;
-        private DataReader dataReader;
 
         public DeviceInformationUpdate DeviceInfo
         {
@@ -159,10 +147,14 @@ namespace PastingMaui.Platforms
                 return new ToastData("Failed to Connect", $"{Name} is unpaired and cannot be connected. Access Status: {accessStatus}", ToastType.Alert);
             }
 
-            // services supported by the device
-            var deviceServices = await bluetoothDevice.GetRfcommServicesForIdAsync(RfcommServiceId.FromUuid(ServiceConfig.serviceUuid));
-
-            if (deviceServices.Services.Count > 0) {
+            //pasteService = bluetoothDevice.RfcommServices[0];
+            //services supported by the device
+            //var allServices = await bluetoothDevice.GetRfcommServicesAsync(BluetoothCacheMode.Uncached);
+            //bluetoothDevice.GetRfcommServicesForIdAsync()
+            //record in uncached
+            var deviceServices = await bluetoothDevice.GetRfcommServicesForIdAsync(RfcommServiceId.FromUuid(ServiceConfig.serviceUuid), BluetoothCacheMode.Uncached);
+            if (deviceServices.Services.Count > 0)
+            {
                 pasteService = deviceServices.Services[0];
             }
             else
@@ -180,35 +172,41 @@ namespace PastingMaui.Platforms
 
             // alert success or failure using Toasts
 
-            var attrReader = DataReader.FromBuffer(attributes[ServiceConfig.sdpServiceAttributeId]);
-            var attrType = attrReader.ReadByte();
-            
-            if (attrType != ServiceConfig.SdpServiceNameAttributeType)
+            using (var attrReader = DataReader.FromBuffer(attributes[ServiceConfig.sdpServiceAttributeId]))
             {
-                return new ToastData("Unable to connect", "Please make sure that the app is running on the other device", ToastType.Alert);
+                var attrType = attrReader.ReadByte();
+                if (attrType != ServiceConfig.SdpServiceNameAttributeType)
+                {
+                    return new ToastData("Unable to connect", "Please make sure that the app is running on the other device", ToastType.Alert);
+                }
             }
+            
 
-            socket = new StreamSocket();
-            attrReader.UnicodeEncoding = WindowsStreams.UnicodeEncoding.Utf8;
+            var socket = new StreamSocket();
+            //attrReader.UnicodeEncoding = WindowsStreams.UnicodeEncoding.Utf8;
 
             try
             {
                 await socket.ConnectAsync(pasteService.ConnectionHostName, pasteService.ConnectionServiceName);
-                StreamReader reader = new StreamReader(socket.OutputStream.AsStreamForWrite());
-                dataWriter = new DataWriter(socket.OutputStream);
-                dataReader = new DataReader(socket.InputStream);
-                PastingApp.app.client.deviceScanner.StopScan();
+                PastingApp.app.SetConnectedDevice(this, socket);
+                //PastingApp.app.StopServicesOnConnect();
+
+                PastingApp.app.StopServicesOnConnect();
+                //PastingApp.app.client.deviceScanner.StopScan();
+                //PastingApp.app.server.StopServer(); 
 
                 //client.SetConnectedDevice(this);
-                ReadLoop(dataReader, PastingApp.app.client.deviceScanner);
-
+                PastingApp.app._toast_service.
+                    AddToast("Connected", "Connected to device", ToastType.Alert);
             }
             catch (Exception e) when ((uint)e.HResult == 0x80070490) // service not found 
             {
+                PastingApp.app.client.deviceScanner.RestartScan();
                 return new ToastData("Unable to connect", "Please make sure that the app is running on the other device", ToastType.Alert);
             }
             catch (Exception e) when ((uint)e.HResult == 0x80072740) // already connected to another device using rfcomm
             {
+                PastingApp.app.client.deviceScanner.RestartScan();
                 return new ToastData("Unable to connect", "The other device is currently connected to another device", ToastType.Alert);
             }
 
@@ -221,86 +219,8 @@ namespace PastingMaui.Platforms
 
         }
 
-        public async void ReadLoop(DataReader reader, IBTScan scanner)
-        {
-
-            // now connected to the client
-
-            // display socket statistics using socket.Information
-
-            while (true)
-            {
-                IBuffer buffer;
-                bool disconnected = false;
-                int blockSize = 4096;
-                int totalReadCount = 0;
-
-                try
-                {
-                    int type = dataReader.ReadByte(); // type of info
-
-                    if (type > 2)
-                    {
-                        // notify user bad packet
-                    }
-
-                    // 32 bit integer
-                    uint dataSize = dataReader.ReadUInt32();
-
-                    var readCount = await dataReader.LoadAsync((uint)blockSize);
-
-                    if (readCount != dataSize)
-                    {
-                        // data was cut off, or connection was lost
-
-                        // cut connection
-                        // Disconnect Here?
-                        disconnected = true;
-
-                        // notify user that connection was broken
-                    }
-                    else
-                    {
-                        buffer = dataReader.ReadBuffer(readCount);
-                        // deal with data here
-                    }
-
-
-                    // save file to folder location
-                }
-                catch (Exception ex)
-                {
-                    // handle exception here 
-                    if (socket == null)
-                    {
-                        if ((uint)ex.HResult == 0x80072745) // disconnect by remote device
-                        {
-
-                        }
-                        else
-                        {
-
-                        }
-                    }
-                }
-
-                if (disconnected)
-                {
-                    Disconnect();
-                    return;
-                    // notify user about the disconnection
-                }
-            }
-        }
-
         public void Disconnect()
         {
-            if (dataWriter != null)
-            {
-                dataWriter.DetachStream();
-                dataWriter = null;
-            }
-
             if (pasteService != null)
             {
                 pasteService.Dispose();
@@ -317,6 +237,11 @@ namespace PastingMaui.Platforms
         public bool Pair()
         {
 
+            throw new NotImplementedException();
+        }
+
+        public void Disconnect(IClient client)
+        {
             throw new NotImplementedException();
         }
 

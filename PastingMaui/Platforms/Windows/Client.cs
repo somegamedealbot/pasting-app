@@ -1,11 +1,6 @@
 ﻿using PastingMaui.Data;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PastingMaui.Platforms
 {
@@ -60,6 +55,9 @@ namespace PastingMaui.Platforms
             }
         }
 
+        bool isScanning;
+        public bool IsScanning { get { return isScanning; } }
+
         public IBTDevice ConnectedDevice;
 
         public async Task ActionOnDevices(Func<Task> task)
@@ -84,13 +82,27 @@ namespace PastingMaui.Platforms
             }
             if (!scanner.isScanning())
             {
+                discovered_devices.Clear();
                 scanner.ScanDevices();
+                isScanning = true;
             }
+        }
+
+        public void StopScanning()
+        {
+            scanner.StopScan();
+            isScanning = false;
         }
 
         public void SetConnectedDevice(IBTDevice device)
         {
             ConnectedDevice = device;
+        }
+
+        public void RemoveConnectedDevice()
+        {
+            //ConnectedDevice.Dispose();
+            ConnectedDevice = null;
         }
     }
 }

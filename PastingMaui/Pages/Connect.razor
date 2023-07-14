@@ -1,0 +1,34 @@
+﻿@page "/pairing"
+
+@using Data
+@inject IToastService toast_service
+@inject IPasting pastingApp
+
+<h3>Connect</h3>
+@if (!pastingApp.ConnectedToDevice)
+{
+    <Pairing></Pairing>
+}
+else
+{
+    <button class="btn btn-primary" @onclick="DisconnectDevice">Disconnect from @pastingApp.ConnectedDevice.Name</button>
+}
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        EventHandler refreshHandler = async (sender, args) => {
+            await InvokeAsync(() => StateHasChanged());
+        };
+        pastingApp.UIChangeOnConnect += refreshHandler;
+        pastingApp.UIChangeOnDisconnect += refreshHandler;
+    }
+
+    public void DisconnectDevice()
+    {
+        pastingApp.DisconnectDevice();
+        StateHasChanged();
+    }
+
+}

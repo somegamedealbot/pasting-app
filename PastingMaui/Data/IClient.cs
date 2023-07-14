@@ -30,6 +30,11 @@ namespace PastingMaui.Data
             get;
         }
 
+        public bool IsScanning
+        {
+            get;
+        }
+
         // Task instead of async
         public Task ActionOnDevices(Func<Task> task);
 
@@ -39,6 +44,8 @@ namespace PastingMaui.Data
         }
 
         public void SetConnectedDevice(IBTDevice device);
+
+        public void RemoveConnectedDevice();
 
     }
 }

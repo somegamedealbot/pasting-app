@@ -173,6 +173,7 @@ namespace PastingMaui.Platforms
             }
             else if (intent.Action == StopScanAction)
             {
+
                 StopScan();
                 // unpack the receivers
                 // set them up
@@ -192,8 +193,7 @@ namespace PastingMaui.Platforms
         public void ScanDevices()
         {
             // before discovering check if already discovering
-            Toast toast; 
-
+            Toast toast;
             if (!adapter.IsDiscovering)
             {
                 GetBondedDevices();
@@ -225,7 +225,7 @@ namespace PastingMaui.Platforms
 
         public void StopScan()
         {
-            if (!adapter.IsDiscovering)
+            if (adapter.IsDiscovering)
             {
                 adapter.CancelDiscovery();
                 state = WatcherState.IDLE;

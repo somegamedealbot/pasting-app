@@ -37,8 +37,9 @@ public static class MauiProgram
 		builder.Services.AddMauiBlazorWebView();
         //builder.Services.AddSingleton<IClient, Client>();
         //builder.Services.AddSingleton<IServer, Server>();
+        builder.Services.AddSingleton<IToastService, ToastService>();
         builder.Services.AddSingleton<IPasting, PastingApp>();
-        builder.Services.AddSingleton<ToastService>();
+		
 		/*builder.Services.AddSingleton<ToastData()>;*/
         /*builder.Services.AddTransient<IBTScan, BTScanner>();*/
 
