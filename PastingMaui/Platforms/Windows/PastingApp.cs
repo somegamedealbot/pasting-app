@@ -1,5 +1,6 @@
 ﻿using PastingMaui.Data;
 using PastingMaui.Platforms.Windows;
+using PastingMaui.Platforms.Windows.DataHandlers;
 using PastingMaui.Shared;
 using Windows.Networking.Sockets;
 
@@ -13,6 +14,7 @@ namespace PastingMaui.Platforms
 
         BTDevice connectedDevice;
         IOHandler handler;
+        DataHandler dataHandler;
         public IToastService _toast_service;
 
         public event EventHandler OnUIChangeOnConnect;
@@ -30,6 +32,7 @@ namespace PastingMaui.Platforms
             appClient = new Client();
             appServer = new Server();
             StartServer();
+            dataHandler = new DataHandler();
             // https://github.com/android/connectivity-samples/issues/263#issuecomment-1100650576
             // use for requsting bluetooth permission
         }
@@ -95,6 +98,7 @@ namespace PastingMaui.Platforms
             ConnectedToDevice = true;
             ConnectedDevice = device;
             handler = new IOHandler(device, socket);
+            dataHandler.SetIOHandler(handler);
             SetupReadWriteHandlers();
             OnUIChangeOnConnect.Invoke(this, null);
             if (handler.StartReadThread())
@@ -122,7 +126,13 @@ namespace PastingMaui.Platforms
             ConnectedDevice = null;
             //handler.Dispose()
             handler = null;
+            dataHandler.RemoveIOHandler();
             OnUIChangeOnDisconnect.Invoke(this, null);
+        }
+
+        public async Task SendPasteData()
+        {
+            await dataHandler.SendPasteData();
         }
 
         public void StartClient()
@@ -134,6 +144,8 @@ namespace PastingMaui.Platforms
         {
             appClient.ScanDevices();
         }
+
+
 
         public void StartServer()
         {

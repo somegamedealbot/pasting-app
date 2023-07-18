@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Android.Bluetooth;
+﻿using Android.Bluetooth;
 using PastingMaui.Data;
 
 namespace PastingMaui.Platforms.Android
@@ -18,6 +13,8 @@ namespace PastingMaui.Platforms.Android
 
         Thread readThread;
         Thread writeThread;
+
+        public static int bufferSize = 4096;
 
         public IOHandler(BluetoothSocket socket)
         {
@@ -66,11 +63,11 @@ namespace PastingMaui.Platforms.Android
 
         }
 
-        public bool WriteStreamTo(int type, Stream data, uint dataSize)
+        public bool WriteStreamTo(PacketInfo info, Stream data)
         {
             writeThread = new Thread(async () =>
             {
-                await WriteData(outStream, type, data, dataSize);
+                await WriteData(outStream, info, data);
                 CallOnWriteEnd();
             });
             try { writeThread.Start(); } catch
@@ -85,33 +82,20 @@ namespace PastingMaui.Platforms.Android
         {
             while (true)
             {
-                bool initialRead = true;
-                int bufferSize = 4096;
-                byte[] buffer = new byte[bufferSize];
-                uint totalReadCount = 0;
-                int tempCount = 0;
-                uint dataSize = 0;
 
                 try
                 {
-                    while ((tempCount += await inStream.ReadAsync(buffer.AsMemory(0, bufferSize))) != 0)
+                    PacketInfo packet = await PacketInfo.ReadPacketInfo(inStream, bufferSize);
+                    Stream writeLocation = null;
+                    if (!packet.IsText)
                     {
-                        totalReadCount += (uint)tempCount;
-                        if (initialRead)
-                        {
-                            int type = BitConverter.ToInt32(buffer, 0);
-                            dataSize = BitConverter.ToUInt32(buffer, sizeof(int));
-                            int preDataSize = sizeof(uint) + 1;
-                            totalReadCount -= (uint)preDataSize;
-                            initialRead = false;
-                            // make sure to check for file signature for the first run through
-
-                            // decide to save to file or display data
-                        }
-
-
-
+                        writeLocation = new MemoryStream();
                     }
+                    else
+                    {
+                        //writeLocation = File.Create() file path here
+                    }
+
                 }
                 catch(Exception ex)
                 {
@@ -122,44 +106,83 @@ namespace PastingMaui.Platforms.Android
            
         }
 
-        public async Task WriteData(Stream outStream, int type, Stream data, uint dataSize)
+        public async Task WriteData(Stream outStream, PacketInfo packet, Stream data)
         {
             int bufferSize = 4096;
             byte[] buffer = new byte[bufferSize];
             uint totalWriteCount = 0;
-            uint remainingCount = dataSize;
+            uint remainingCount = packet.Size;
             int writeSize = 0;
 
             buffer.AsMemory(0, 4096);
-            BitConverter.GetBytes(type).CopyTo(buffer, 0);
-            BitConverter.GetBytes(dataSize).CopyTo(buffer, sizeof(int));
-            writeSize += sizeof(int) + sizeof(uint);
+            BitConverter.GetBytes(packet.IsText).CopyTo(buffer, 0);
+            BitConverter.GetBytes(packet.Size).CopyTo(buffer, sizeof(int));
+            var infoSize = sizeof(int) + sizeof(uint);
 
-            await data.WriteAsync(buffer.AsMemory(writeSize,
-                bufferSize - writeSize));
+            outStream.Write(buffer, 0, infoSize);
 
-            if (dataSize - writeSize < bufferSize)
+            if (packet.Size < bufferSize)
             {
-                writeSize += (int)dataSize;
+                writeSize += (int)packet.Size;
             }
             else
             {
                 writeSize += bufferSize - writeSize;
             }
 
-            while (totalWriteCount < dataSize)
+            while (totalWriteCount < packet.Size)
             {
-                await outStream.WriteAsync(buffer.AsMemory(0, writeSize));
+                data.Read(buffer, 0, writeSize);
+                outStream.Write(buffer, 0, writeSize);
+                outStream.Flush();
+                //await writer.StoreAsync();
                 totalWriteCount += (uint)writeSize;
                 remainingCount -= (uint)writeSize;
-
-                writeSize = (dataSize - writeSize < bufferSize) ? (int)dataSize : bufferSize;
-                await data.WriteAsync(buffer.AsMemory(0,
-                bufferSize));
+                writeSize = (packet.Size - writeSize < bufferSize) ? (int)packet.Size : bufferSize;
+                //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
 
             }
 
         }
+
+        //public async Task WriteData(Stream outStream, PacketInfo packetInfo, Stream data)
+        //{
+        //    int bufferSize = 4096;
+        //    byte[] buffer = new byte[bufferSize];
+        //    uint totalWriteCount = 0;
+        //    uint remainingCount = packetInfo.Size;
+        //    int writeSize = 0;
+
+        //    buffer.AsMemory(0, 4096);
+        //    BitConverter.GetBytes(packetInfo.IsText).CopyTo(buffer, 0);
+        //    BitConverter.GetBytes(packetInfo.Size).CopyTo(buffer, sizeof(int));
+        //    writeSize += sizeof(int) + sizeof(uint);
+
+        //    await data.WriteAsync(buffer.AsMemory(writeSize,
+        //        bufferSize - writeSize));
+
+        //    if (packetInfo.Size - writeSize < bufferSize)
+        //    {
+        //        writeSize += (int)packetInfo.Size;
+        //    }
+        //    else
+        //    {
+        //        writeSize += bufferSize - writeSize;
+        //    }
+
+        //    while (totalWriteCount < packetInfo.Size)
+        //    {
+        //        await outStream.WriteAsync(buffer.AsMemory(0, writeSize));
+        //        totalWriteCount += (uint)writeSize;
+        //        remainingCount -= (uint)writeSize;
+
+        //        writeSize = (packetInfo.Size - writeSize < bufferSize) ? (int)packetInfo.Size : bufferSize;
+        //        await data.WriteAsync(buffer.AsMemory(0,
+        //        bufferSize));
+
+        //    }
+
+        //}
 
     }
 }

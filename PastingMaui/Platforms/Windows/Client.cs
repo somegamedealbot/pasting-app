@@ -1,6 +1,7 @@
 ﻿using PastingMaui.Data;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Threading.Tasks;
 
 namespace PastingMaui.Platforms
 {
@@ -62,7 +63,7 @@ namespace PastingMaui.Platforms
 
         public async Task ActionOnDevices(Func<Task> task)
         {
-            await deviceListSemaphore.WaitAsync();
+            deviceListSemaphore.Wait();
             await task.Invoke(); // does whatever task that the list
             deviceListSemaphore.Release();
         }
@@ -76,16 +77,20 @@ namespace PastingMaui.Platforms
 
         public void ScanDevices()
         {
-            if (scanner == null)
-            {
-                scanner = new BTScanner(devices, removed_devices);
-            }
+            scanner ??= new BTScanner(devices, this);
             if (!scanner.isScanning())
             {
                 discovered_devices.Clear();
                 scanner.ScanDevices();
                 isScanning = true;
             }
+        }
+
+        public async Task AddDevice(BTDevice device)
+        {
+            deviceListSemaphore.Wait();
+            devices.Add(device); // does whatever task that the list
+            deviceListSemaphore.Release();
         }
 
         public void StopScanning()

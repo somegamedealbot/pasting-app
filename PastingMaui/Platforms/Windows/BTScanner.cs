@@ -23,11 +23,14 @@ namespace PastingMaui.Platforms
             set;
         }
 
+        Client client;
+
         // check for permissions and setup before scanning
-        public BTScanner(ObservableCollection<IBTDevice> btDevices, List<IBTDevice> removedDevices)
+        public BTScanner(ObservableCollection<IBTDevice> btDevices, Client appClient)
         {
 
             btDevicesCollection = btDevices;
+            client = appClient;
             CreateWatcher();
         }
 
@@ -58,7 +61,7 @@ namespace PastingMaui.Platforms
                 //{
                 //    if (Boolean == true)
                 //    {
-                        btDevicesCollection.Add(new BTDevice(deviceInfo));
+                await client.AddDevice(new BTDevice(deviceInfo));
                     //}
                 //}
                 //await RefreshBTDevices();
@@ -74,20 +77,24 @@ namespace PastingMaui.Platforms
                 //{
                 //    if (Boolean == true)
                 //    {
-                        bool DeviceRemoved = false;
-                        int index = 0;
-                        while (!DeviceRemoved && index < btDevicesCollection.Count)
+                await client.ActionOnDevices(() =>
+                {
+                    bool DeviceRemoved = false;
+                    int index = 0;
+                    while (!DeviceRemoved && index < btDevicesCollection.Count)
+                    {
+
+                        var device = btDevicesCollection[index];
+                        if (device.Id.Equals(update.Id))
                         {
-
-                            var device = btDevicesCollection[index];
-                            if (device.Id.Equals(update.Id))
-                            {
-                                btDevicesCollection.Remove(device);
-                                DeviceRemoved = !DeviceRemoved;
-                            }
-                            index++;
-
+                            btDevicesCollection.Remove(device);
+                            DeviceRemoved = !DeviceRemoved;
                         }
+                        index++;
+
+                    }
+                    return Task.CompletedTask;
+                });
                 //    }
                 //}
 
@@ -103,20 +110,23 @@ namespace PastingMaui.Platforms
                 //{
                 //    if (Boolean == true)
                 //    {
-                        var tempEnumerableDevices = btDevicesCollection.Cast<BTDevice>();
-                        // cast should not create new objects but objects should remain the same in original colleciton
+                await client.ActionOnDevices(() =>
+                {
+                    var tempEnumerableDevices = btDevicesCollection.Cast<BTDevice>();
+                    // cast should not create new objects but objects should remain the same in original colleciton
 
-                        foreach (BTDevice device in tempEnumerableDevices)
+                    foreach (BTDevice device in tempEnumerableDevices)
+                    {
+                        if (device.Id == update.Id)
                         {
-                            if (device.Id == update.Id)
-                            {
-                                device.DeviceInfo = update;
-                                //device.UpdateDeviceInformation(update);
-                                break;
-                            }
+                            device.DeviceInfo = update;
+                            //device.UpdateDeviceInformation(update);
+                            break;
                         }
-                        //await RefreshBTDevices();
-                        
+                    }
+                    //await RefreshBTDevices();
+                    return Task.CompletedTask;
+                });
                 //    }
                 //}
 

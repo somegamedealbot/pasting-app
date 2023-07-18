@@ -34,10 +34,6 @@ namespace PastingMaui.Platforms
         {
             // put things here when the read thread is disconnected
         };
-        //private void OnReadThreadEnd(EventArgs e)
-        //{
-        //    ReadThreadEnd?.Invoke(this, e);
-        //}
 
         public async Task InitServer()
         {
@@ -154,11 +150,9 @@ namespace PastingMaui.Platforms
             // loop to read content sent
             btDevice = await BluetoothDevice.FromHostNameAsync(socket.Information.RemoteHostName);
             deviceInfo = new BTDevice(btDevice.DeviceInformation);
-            //PastingApp.app.StopServicesOnConnect();
-            //StopServer();
-            //PastingApp.app.client.deviceScanner.StopScan();
+
             PastingApp.app.StopServicesOnConnect();
-            //PastingApp.app.StopServicesOnConnect();
+
             PastingApp.app.SetConnectedDevice(deviceInfo, socket);
             SetHandler(socket, deviceInfo);
             SetupReadWriteHandlers();

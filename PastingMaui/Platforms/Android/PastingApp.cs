@@ -5,7 +5,7 @@ using Application = Android.App.Application;
 using AndroidToast = Android.Widget.Toast;
 using AndroidToastLength = Android.Widget.ToastLength;
 using Android.Bluetooth;
-using Android.Content;
+using PastingMaui.Platforms.Windows.DataHandlers;
 
 namespace PastingMaui.Platforms
 {
@@ -29,6 +29,7 @@ namespace PastingMaui.Platforms
         private IToastService _toast_service;
         public Server appServer;
         private IOHandler ioHandler;
+        private DataHandler dataHandler;
 
         public event EventHandler OnUIChangeOnConnect;
         public event EventHandler OnUIChangeOnDisconnect;
@@ -44,16 +45,9 @@ namespace PastingMaui.Platforms
             app = this;
             appClient = new Client();
             appServer = new Server();
+            dataHandler = new DataHandler();
         }
-
-        //public PastingApp(ToastService service)
-        //{
-        //    _toast_service = service;
-        //    app = this;
-        //    appClient = new Client();
-        //    // appServer = new Server();
-        //}
-
+        
         IServer IPasting.server {
             get
             {
@@ -99,6 +93,7 @@ namespace PastingMaui.Platforms
             ConnectedDevice = device;
             ioHandler = new IOHandler(device, socket);
             SetupReadWriteHandlers();
+            dataHandler.SetIOHandler(ioHandler);
             OnUIChangeOnConnect?.Invoke(this, null);
             if (ioHandler.StartReadThread())
             {
@@ -113,6 +108,7 @@ namespace PastingMaui.Platforms
             ConnectedToDevice = ConnectedToDevice == true ? false : throw new Exception("Bad Connected Device State");
             ConnectedDevice = null;
             ioHandler.CloseConnection();
+            dataHandler.RemoveIOHandler();
             OnUIChangeOnDisconnect?.Invoke(this, null);
             // dispose here
             //ioHandler.Dispose();
@@ -133,19 +129,17 @@ namespace PastingMaui.Platforms
 
         public void StartClient()
         {
-
-
-            //Intent clientIntent = new(Application.Context, typeof(Client));
-            
-            //// prevents multiple instances of the client and required for starting in non-activity class
-            //clientIntent.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NewTask);
-            
-            //Application.Context.StartActivity(clientIntent);
         }
 
         public void StartServer()
         {
 
+        }
+
+        public Task SendPasteData()
+        {
+            dataHandler.SendPasteData();
+            return Task.CompletedTask;
         }
 
         public static PastingApp getApp()

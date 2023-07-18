@@ -37,9 +37,6 @@ namespace PastingMaui.Shared
             }
         }
 
-        public event Action<ObservableCollection<Toast>> 
-            dToast;
-
         public void AddToast(string title, string message, ToastType type)
         {
             var toast = new ToastData(title, message, type);

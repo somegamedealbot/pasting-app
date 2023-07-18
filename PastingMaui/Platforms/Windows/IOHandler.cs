@@ -1,9 +1,11 @@
 ﻿using PastingMaui.Data;
+using PastingMaui.Platforms.Android;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
@@ -21,19 +23,21 @@ namespace PastingMaui.Platforms.Windows
         Thread readThread;
         Thread writeThread;
 
+        public static int bufferSize = 4096;
+
         public IOHandler(StreamSocket socket)
         {
             bluetoothSocket = socket;
-            writer = new DataWriter(socket.OutputStream);
             reader = new DataReader(socket.InputStream);
+            writer = new DataWriter(socket.OutputStream);
         }
 
         public IOHandler(BTDevice device, StreamSocket socket)
         {
             btDevice = device;
             bluetoothSocket = socket;
-            writer = new DataWriter(socket.OutputStream);
             reader = new DataReader(socket.InputStream);
+            writer = new DataWriter(socket.OutputStream);
         }
 
         public async void CloseConnection()
@@ -79,11 +83,11 @@ namespace PastingMaui.Platforms.Windows
 
         }
 
-        public bool WriteStreamTo(int type, Stream data, uint dataSize)
+        public bool WriteStreamTo(PacketInfo packet, Stream data)
         {
             writeThread = new Thread(async () =>
             {
-                await WriteData(writer, type, data, dataSize);
+                await WriteData(writer, packet, data);
                 CallOnWriteEnd();
             });
             try { writeThread.Start(); }
@@ -105,31 +109,17 @@ namespace PastingMaui.Platforms.Windows
 
             while (true)
             {
-                IBuffer buffer;
-                bool disconnected = false;
-                uint blockSize = 4096;
-                uint initReadCount = 1 + sizeof(uint);
-                uint tempCount = 0;
-                uint remainingCount = 0;
 
                 try
                 {
-                    await reader.LoadAsync(initReadCount);
-                    int type = reader.ReadByte(); // type of info
-
-                    if (type > 2)
+                    PacketInfo packet = await PacketInfo.ReadPacketInfo(reader);
+                    Stream writeLocation;
+                    if (packet.IsText)
                     {
-                        // notify user bad packet
+                        writeLocation = new MemoryStream();
                     }
-
-                    // 32 bit integer
-                    uint dataSize = reader.ReadUInt32();
-
-
-                    while ((tempCount += await reader.LoadAsync(blockSize)) != 0)
+                    else
                     {
-                        remainingCount = dataSize - tempCount;
-                        buffer = reader.ReadBuffer(blockSize);
 
                     }
 
@@ -163,39 +153,39 @@ namespace PastingMaui.Platforms.Windows
                 //}
             }
         }
-        public async Task WriteData(DataWriter writer, int type, Stream data, uint dataSize)
+        public async Task WriteData(DataWriter writer, PacketInfo packet, Stream data)
         {
             int bufferSize = 4096;
             byte[] buffer = new byte[bufferSize];
             uint totalWriteCount = 0;
-            uint remainingCount = dataSize;
+            uint remainingCount = packet.Size;
             int writeSize = 0;
 
             buffer.AsMemory(0, 4096);
-            BitConverter.GetBytes(type).CopyTo(buffer, 0);
-            BitConverter.GetBytes(dataSize).CopyTo(buffer, sizeof(int));
-            writeSize += sizeof(int) + sizeof(uint);
+            BitConverter.GetBytes(packet.IsText).CopyTo(buffer, 0);
+            BitConverter.GetBytes(packet.Size).CopyTo(buffer, sizeof(int));
+            var infoSize = sizeof(int) + sizeof(uint);
 
-            await data.WriteAsync(buffer.AsMemory(writeSize,
-                bufferSize - writeSize));
+            writer.WriteBuffer(buffer.AsBuffer(), 0, (uint)infoSize);
 
-            if (dataSize - writeSize < bufferSize)
+            if (packet.Size < bufferSize)
             {
-                writeSize += (int)dataSize;
+                writeSize += (int)packet.Size;
             }
             else
             {
                 writeSize += bufferSize - writeSize;
             }
 
-            while (totalWriteCount < dataSize)
+            while (totalWriteCount < packet.Size)
             {
+                data.Read(buffer, 0, writeSize);
                 writer.WriteBytes(buffer);
+                await writer.StoreAsync();
                 totalWriteCount += (uint)writeSize;
                 remainingCount -= (uint)writeSize;
-
-                writeSize = (dataSize - writeSize < bufferSize) ? (int)dataSize : bufferSize;
-                await data.WriteAsync(buffer.AsMemory(0, bufferSize));
+                writeSize = (packet.Size - writeSize < bufferSize) ? (int)packet.Size : bufferSize;
+                //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
 
             }
 

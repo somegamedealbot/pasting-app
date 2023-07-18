@@ -6,15 +6,7 @@ using Android;
 using Android.App;
 using Android.Bluetooth;
 using Android.Content;
-using Android.Content.PM;
-using Android.Media;
-using Android.OS;
-using Android.Runtime;
-using AndroidX.Core.App;
 using AndroidX.Core.Content;
-using Java.Lang;
-using Microsoft.Maui;
-using Microsoft.Maui.Controls;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Android.CustomPerms;
 
@@ -25,7 +17,6 @@ namespace PastingMaui.Platforms
 #if DEBUG
         string debugPrefix = "[Client]";
         #endif
-        private static int BLUETOOTH_REQUEST_CODE = 786;
 
         Activity mainActivity;
 

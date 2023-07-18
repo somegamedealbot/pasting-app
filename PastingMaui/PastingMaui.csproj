@@ -54,6 +54,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Compile Update="Platforms\Android\DataHandlers\DataHandler.cs">
+        <ExcludeFromCurrentConfiguration>true</ExcludeFromCurrentConfiguration>
+      </Compile>
       <Compile Update="Platforms\Android\Server.cs">
         <ExcludeFromCurrentConfiguration>true</ExcludeFromCurrentConfiguration>
       </Compile>
@@ -64,6 +67,9 @@
         <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
       </Compile>
       <Compile Update="Platforms\Windows\BTScanner.cs">
+        <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+      </Compile>
+      <Compile Update="Platforms\Windows\PacketInfo.cs">
         <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
       </Compile>
       <Compile Update="Platforms\Windows\PastingApp.cs">

@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace PastingMaui.Data
 {
-    public interface IUIRefresher
+    public class BasePacketInfo
     {
 
+        public bool isText;
 
+        public uint size;
 
     }
 }

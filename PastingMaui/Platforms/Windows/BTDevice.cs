@@ -6,8 +6,6 @@ using Windows.Devices.Bluetooth.Rfcomm;
 using PastingMaui.Shared;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
-using System;
-using utf = Windows.Storage.Streams.UnicodeEncoding;
 
 namespace PastingMaui.Platforms
 {
@@ -70,16 +68,6 @@ namespace PastingMaui.Platforms
 
         public static object RefreshDevice { get; private set; }
 
-        /*public override string Name
-        {
-            return deviceInfo.Name;
-        }
-
-        public override string Kind()
-        {
-            throw new NotImplementedException();
-        }*/
-
         public Boolean Equals(BTDevice device)
         {
             return device.Id.Equals(this.Id);
@@ -88,11 +76,6 @@ namespace PastingMaui.Platforms
         /*public void UpdateDeviceInformation(DeviceInformationUpdate device)
         {
             deviceInfo.Update(device);
-        }*/
-
-        /*public string Kind()
-        {
-            return deviceInfo.Kind;
         }*/
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -147,11 +130,6 @@ namespace PastingMaui.Platforms
                 return new ToastData("Failed to Connect", $"{Name} is unpaired and cannot be connected. Access Status: {accessStatus}", ToastType.Alert);
             }
 
-            //pasteService = bluetoothDevice.RfcommServices[0];
-            //services supported by the device
-            //var allServices = await bluetoothDevice.GetRfcommServicesAsync(BluetoothCacheMode.Uncached);
-            //bluetoothDevice.GetRfcommServicesForIdAsync()
-            //record in uncached
             var deviceServices = await bluetoothDevice.GetRfcommServicesForIdAsync(RfcommServiceId.FromUuid(ServiceConfig.serviceUuid), BluetoothCacheMode.Uncached);
             if (deviceServices.Services.Count > 0)
             {
@@ -181,7 +159,6 @@ namespace PastingMaui.Platforms
                 }
             }
             
-
             var socket = new StreamSocket();
             //attrReader.UnicodeEncoding = WindowsStreams.UnicodeEncoding.Utf8;
 
@@ -189,13 +166,9 @@ namespace PastingMaui.Platforms
             {
                 await socket.ConnectAsync(pasteService.ConnectionHostName, pasteService.ConnectionServiceName);
                 PastingApp.app.SetConnectedDevice(this, socket);
-                //PastingApp.app.StopServicesOnConnect();
 
                 PastingApp.app.StopServicesOnConnect();
-                //PastingApp.app.client.deviceScanner.StopScan();
-                //PastingApp.app.server.StopServer(); 
 
-                //client.SetConnectedDevice(this);
                 PastingApp.app._toast_service.
                     AddToast("Connected", "Connected to device", ToastType.Alert);
             }
@@ -208,6 +181,10 @@ namespace PastingMaui.Platforms
             {
                 PastingApp.app.client.deviceScanner.RestartScan();
                 return new ToastData("Unable to connect", "The other device is currently connected to another device", ToastType.Alert);
+            }
+            catch(Exception e)
+            {
+                return new ToastData("Unable to connect", "Unaccessible network", ToastType.Alert);
             }
 
 
@@ -245,9 +222,5 @@ namespace PastingMaui.Platforms
             throw new NotImplementedException();
         }
 
-        //public Task<ToastData> Connect(IClient scanner)
-        //{
-        //    throw new NotImplementedException();
-        //}
     }
 }

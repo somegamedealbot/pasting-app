@@ -46,17 +46,7 @@ namespace PastingMaui.Platforms
 
         public async Task InitServer()
         {
-            // advertise the device
-
-            // start listening for connections
-
             await StartServer();
-
-            // send here to read loop
-            // write the reader to be used either in the server or the client
-            // it can executed on another thread (optional)
-
-            // same with writer
         }
 
         public async Task StartServer()

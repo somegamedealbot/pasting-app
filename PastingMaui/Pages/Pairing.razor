@@ -42,14 +42,14 @@
             async Task refreshList()
             {
                 try{
-                    @foreach (var device in pastingApp.client.discovered_devices)
+                    foreach (var device in pastingApp.client.discovered_devices)
                     {
                         <tr>
                             <th scope="col" class="col-3 text-truncate">
-                            @device.Name;
+                            @device?.Name;
                             </th>
                             <th scope="col" class="col-4 text-truncate">
-                            @device.Id
+                            @device?.Id
                             </th>
                             <th scope="col">
                                 <button @onclick="() => ConnectToDevice(device)" type="button" class="btn btn-primary">Connect</button>
@@ -63,7 +63,14 @@
                 }
 
             }
-            pastingApp.client.ActionOnDevices(refreshList);
+            try
+            {
+                var state = pastingApp.client.ActionOnDevices(refreshList);
+            }
+            catch(Exception e)
+            {
+                
+            }
         }
     </tbody>
 </table>
