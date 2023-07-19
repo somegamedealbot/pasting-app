@@ -1,0 +1,42 @@
+﻿@page "/send-paste"
+
+@using Data
+@inject IPasting pastingApp
+<h3>SendPaste</h3>
+
+@if (pastingApp.ConnectedToDevice)
+{
+    <button @onclick=SendClipboard>Send Paste</button>
+}
+else
+{
+    <h3>No devices connected to send paste data</h3>
+}
+
+@code {
+    public void SendClipboard()
+    {
+        // send the clipboard data here
+        try
+        {
+            pastingApp.SendPasteData();
+        }
+        catch(Exception e)
+        {
+            
+        }
+
+    }
+
+    protected override void OnInitialized()
+    {
+        EventHandler refreshHandler = async (sender, args) =>
+        {
+            await InvokeAsync(() => StateHasChanged());
+        };
+        pastingApp.UIChangeOnConnect += refreshHandler;
+        pastingApp.UIChangeOnDisconnect += refreshHandler;
+    }
+
+}
+

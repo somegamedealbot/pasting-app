@@ -4,9 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PastingMaui.Platforms.Android
+namespace PastingMaui.Data
 {
-    internal class Scan
+    public class BasePacketInfo
     {
+
+        public bool isText;
+
+        public uint size;
+
     }
 }

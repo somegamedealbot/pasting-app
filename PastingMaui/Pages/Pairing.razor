@@ -1,10 +1,8 @@
-﻿@page "/pairing"
-
-@using System.Collections.ObjectModel
+﻿@using System.Collections.ObjectModel
 @using PastingMaui
 @using Data
 @using System.Collections.Concurrent
-@inject ToastService toast_service
+@inject IToastService toast_service
 @inject IPasting pastingApp
 @*@inject IServer server*@
 
@@ -35,39 +33,45 @@
             </th>
         </tr>
     </thead>
+
     <!-- Write method here that will run after an change is detected in discovered_devices
         maybe method will be async / not sure -> as a Task for changing the dom
     -->
     <tbody>
-        @*@{
-            async void refreshList()
+        @{
+            async Task refreshList()
             {
-                {
-                    try{
-                        @foreach (var device in pastingApp.client.discovered_devices)
-                        {
-                            <tr>
-                                <th scope="col" class="col-3 text-truncate">
-                                @device.Name;
-                                </th>
-                                <th scope="col" class="col-4 text-truncate">
-                                @device.Id
-                                </th>
-                                <th scope="col">
-                                    <button @onclick="() => ConnectToDevice(device)" type="button" class="btn btn-primary">Connect</button>
-                                </th>
-                            </tr>
-                        }
-                    }
-                    catch(Exception e)
+                try{
+                    foreach (var device in pastingApp.client.discovered_devices)
                     {
-                        System.Diagnostics.Debug.WriteLine("Modifying list while enumerating " + e.Message);
+                        <tr>
+                            <th scope="col" class="col-3 text-truncate">
+                            @device?.Name;
+                            </th>
+                            <th scope="col" class="col-4 text-truncate">
+                            @device?.Id
+                            </th>
+                            <th scope="col">
+                                <button @onclick="() => ConnectToDevice(device)" type="button" class="btn btn-primary">Connect</button>
+                            </th>
+                        </tr>
                     }
-
                 }
+                catch(Exception e)
+                {
+                    System.Diagnostics.Debug.WriteLine("Modifying list while enumerating " + e.Message);
+                }
+
             }
-            refreshList();
-        }*@
+            try
+            {
+                var state = pastingApp.client.ActionOnDevices(refreshList);
+            }
+            catch(Exception e)
+            {
+                
+            }
+        }
     </tbody>
 </table>
 
@@ -86,11 +90,11 @@
         toast_service.AddToast(alert);
         // toastDatas.Add(alert);
         // await Rerender();
-        ToastData responseAlert = await device.Connect(pastingApp.client.scanner);
+        ToastData responseAlert = await Task.Run(() => device.Connect(pastingApp.client));
         toast_service.AddToast(responseAlert);
         //await Rerender();
     }
-    
+
     //protected RenderFragment RenderToast(ToastData toastData) => (builder) =>
     //{
     //    builder.OpenComponent(0, typeof(ToastAlert));   
@@ -102,7 +106,11 @@
     {
         // scanner will remain the same after leaving page
         // so will the collection of devices
-        pastingApp.StartClient();
+        pastingApp.client.RefreshBTDevices = Rerender;
+        if (!pastingApp.client.IsScanning)
+        {
+            pastingApp.StartScanningDevices();
+        }
         // start server too 
 
 

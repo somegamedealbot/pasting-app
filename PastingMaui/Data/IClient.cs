@@ -20,5 +20,32 @@ namespace PastingMaui.Data
             get;
         }
 
+        public Func<Task> RefreshBTDevices
+        {
+            set;
+        }
+
+        public SemaphoreSlim deviceListSemaphore
+        {
+            get;
+        }
+
+        public bool IsScanning
+        {
+            get;
+        }
+
+        // Task instead of async
+        public Task ActionOnDevices(Func<Task> task);
+
+        public IBTDevice ConnectedDevice
+        {
+            get;
+        }
+
+        public void SetConnectedDevice(IBTDevice device);
+
+        public void RemoveConnectedDevice();
+
     }
 }

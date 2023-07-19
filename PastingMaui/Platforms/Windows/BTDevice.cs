@@ -1,39 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel;
 using Windows.Devices.Enumeration;
 using PastingMaui.Data;
-using Windows.Foundation;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Rfcomm;
 using PastingMaui.Shared;
-using Windows.Storage.Streams;
 using Windows.Networking.Sockets;
+using Windows.Storage.Streams;
 
 namespace PastingMaui.Platforms
 {
-    internal class BTDevice : IBTDevice, INotifyPropertyChanged
+    internal class BTDevice : IBTDevice /*INotifyPropertyChanged*/
         // todo: rename BTDevice to DiscoveredDevice
     {
 
         // add static delegate for the event of a property 
-        public static PropertyChangedEventHandler UpdateUi = async (object device, PropertyChangedEventArgs args) => { 
-            await RefreshDevice.Invoke();
-        };
+        //public static PropertyChangedEventHandler UpdateUi = async (object device, PropertyChangedEventArgs args) => { 
+        //    await RefreshDevice.Invoke();
+        //};
 
         private DeviceInformation deviceInfo;
 
         private BluetoothDevice bluetoothDevice;
 
         private RfcommDeviceService pasteService;
-
-        private StreamSocket socket;
-
-        private DataWriter dataWriter;
-        private DataReader dataReader;
 
         public DeviceInformationUpdate DeviceInfo
         {
@@ -45,7 +34,7 @@ namespace PastingMaui.Platforms
         
         public BTDevice(DeviceInformation info) {
             deviceInfo = info;
-            PropertyChanged += UpdateUi;
+            //PropertyChanged += UpdateUi;
             /*
              * Back up lambda method for updates where each object would have a different function
              * (async (obj, args) =>
@@ -54,14 +43,14 @@ namespace PastingMaui.Platforms
             });*/
         }
 
-        public override string Id
+        public string Id
         {
             get {
                 return deviceInfo.Id;
             } 
         }
 
-        public override string Name
+        public string Name
         {
             get
             {
@@ -69,7 +58,7 @@ namespace PastingMaui.Platforms
             }
         }
 
-        public override string Type
+        public string Type
         {
             get
             {
@@ -77,15 +66,7 @@ namespace PastingMaui.Platforms
             }
         }
 
-        /*public override string Name
-        {
-            return deviceInfo.Name;
-        }
-
-        public override string Kind()
-        {
-            throw new NotImplementedException();
-        }*/
+        public static object RefreshDevice { get; private set; }
 
         public Boolean Equals(BTDevice device)
         {
@@ -97,11 +78,6 @@ namespace PastingMaui.Platforms
             deviceInfo.Update(device);
         }*/
 
-        /*public string Kind()
-        {
-            return deviceInfo.Kind;
-        }*/
-
         public event PropertyChangedEventHandler PropertyChanged;
 
         public void NotifyPropertyChanged()
@@ -109,7 +85,7 @@ namespace PastingMaui.Platforms
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Device Updated."));
         }
 
-        public override async Task<ToastData> Connect(IBTScan scanner)
+        public async Task<ToastData> Connect(IClient client)
         {
             if (deviceInfo == null)
             { // no device to be connected to, missing information
@@ -154,10 +130,9 @@ namespace PastingMaui.Platforms
                 return new ToastData("Failed to Connect", $"{Name} is unpaired and cannot be connected. Access Status: {accessStatus}", ToastType.Alert);
             }
 
-            // services supported by the device
-            var deviceServices = await bluetoothDevice.GetRfcommServicesForIdAsync(RfcommServiceId.FromUuid(ServiceConfig.serviceUuid));
-
-            if (deviceServices.Services.Count > 0) {
+            var deviceServices = await bluetoothDevice.GetRfcommServicesForIdAsync(RfcommServiceId.FromUuid(ServiceConfig.serviceUuid), BluetoothCacheMode.Uncached);
+            if (deviceServices.Services.Count > 0)
+            {
                 pasteService = deviceServices.Services[0];
             }
             else
@@ -175,34 +150,41 @@ namespace PastingMaui.Platforms
 
             // alert success or failure using Toasts
 
-            var attrReader = DataReader.FromBuffer(attributes[ServiceConfig.sdpServiceAttributeId]);
-            var attrType = attrReader.ReadByte();
-            
-            if (attrType != ServiceConfig.SdpServiceNameAttributeType)
+            using (var attrReader = DataReader.FromBuffer(attributes[ServiceConfig.sdpServiceAttributeId]))
             {
-                return new ToastData("Unable to connect", "Please make sure that the app is running on the other device", ToastType.Alert);
+                var attrType = attrReader.ReadByte();
+                if (attrType != ServiceConfig.SdpServiceNameAttributeType)
+                {
+                    return new ToastData("Unable to connect", "Please make sure that the app is running on the other device", ToastType.Alert);
+                }
             }
-
-            socket = new StreamSocket();
-            attrReader.UnicodeEncoding = Windows.Storage.Streams.UnicodeEncoding.Utf8;
+            
+            var socket = new StreamSocket();
+            //attrReader.UnicodeEncoding = WindowsStreams.UnicodeEncoding.Utf8;
 
             try
             {
-
                 await socket.ConnectAsync(pasteService.ConnectionHostName, pasteService.ConnectionServiceName);
-                dataWriter = new DataWriter(socket.OutputStream);
-                dataReader = new DataReader(socket.InputStream);
-                scanner.StopScan();
-                ReadLoop(dataReader, scanner);
+                PastingApp.app.SetConnectedDevice(this, socket);
 
+                PastingApp.app.StopServicesOnConnect();
+
+                PastingApp.app._toast_service.
+                    AddToast("Connected", "Connected to device", ToastType.Alert);
             }
             catch (Exception e) when ((uint)e.HResult == 0x80070490) // service not found 
             {
+                PastingApp.app.client.deviceScanner.RestartScan();
                 return new ToastData("Unable to connect", "Please make sure that the app is running on the other device", ToastType.Alert);
             }
             catch (Exception e) when ((uint)e.HResult == 0x80072740) // already connected to another device using rfcomm
             {
+                PastingApp.app.client.deviceScanner.RestartScan();
                 return new ToastData("Unable to connect", "The other device is currently connected to another device", ToastType.Alert);
+            }
+            catch(Exception e)
+            {
+                return new ToastData("Unable to connect", "Unaccessible network", ToastType.Alert);
             }
 
 
@@ -214,105 +196,31 @@ namespace PastingMaui.Platforms
 
         }
 
-        public async void ReadLoop(DataReader reader, IBTScan scanner)
+        public void Disconnect()
         {
-
-            // now connected to the client
-
-            // display socket statistics using socket.Information
-
-            while (true)
-            {
-                IBuffer buffer;
-                bool disconnected = false;
-                int blockSize = 4096;
-                int totalReadCount = 0;
-
-                try
-                {
-                    int type = dataReader.ReadByte(); // type of info
-
-                    if (type > 2)
-                    {
-                        // notify user bad packet
-                    }
-
-                    // 32 bit integer
-                    uint dataSize = dataReader.ReadUInt32();
-
-                    var readCount = await dataReader.LoadAsync((uint)blockSize);
-
-                    if (readCount != dataSize)
-                    {
-                        // data was cut off, or connection was lost
-
-                        // cut connection
-                        // Disconnect Here?
-                        disconnected = true;
-
-                        // notify user that connection was broken
-                    }
-                    else
-                    {
-                        buffer = dataReader.ReadBuffer(readCount);
-                        // deal with data here
-                    }
-
-
-                    // save file to folder location
-                }
-                catch (Exception ex)
-                {
-                    // handle exception here 
-                    if (socket == null)
-                    {
-                        if ((uint)ex.HResult == 0x80072745) // disconnect by remote device
-                        {
-
-                        }
-                        else
-                        {
-
-                        }
-                    }
-                }
-
-                if (disconnected)
-                {
-                    Disconnect(scanner);
-                    return;
-                    // notify user about the disconnection
-                }
-            }
-        }
-
-        public override void Disconnect(IBTScan scanner)
-        {
-            if (dataWriter != null)
-            {
-                dataWriter.DetachStream();
-                dataWriter = null;
-            }
-
             if (pasteService != null)
             {
                 pasteService.Dispose();
                 pasteService = null;
             }
-
-            scanner.ScanDevices();
         }
 
-        public override bool IsConnected()
+        public bool IsConnected()
         {
             
             throw new NotImplementedException();
         }
 
-        public override bool Pair()
+        public bool Pair()
         {
 
             throw new NotImplementedException();
         }
+
+        public void Disconnect(IClient client)
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }

@@ -14,24 +14,41 @@ using System.Runtime.InteropServices;
 using Java.Util;
 using Java.Nio;
 using System.Runtime.CompilerServices;
+using Android.Runtime;
+using static PastingMaui.Platforms.Client;
+using Android.Widget;
 
 namespace PastingMaui.Platforms
 {
-
-    public class BTScanner : Activity, IBTScan, IDisposable
+    [Service(Exported = false)]
+    [IntentFilter(actions: new string[]{"SCAN_DEVICE", "ENABLE_BLUETOOTH_RESULT"})]
+    public class BTScanner : Service, IBTScan, IDisposable
     {
+        public static readonly string RescanDevicesAction = "RESCAN_DEVICES";
+        public static readonly string SetupReceiversAction = "SETUP_RECEIVERS";
+        public static readonly string ScanDevicesAction = "SCAN_DEVICES";
+        public static readonly string ScanFinishedAction = "SCAN_FINISHED";
+        public static readonly int ENABLE_BLUETOOTH_REQ_CODE = 567;
+        public static readonly string EnableBluetoothResult = "ENABLE_BLUETOOTH_RESULT";
+        public static readonly string BondedDevicesAction = "BONDED_DEVICES";
+        public static readonly string StopScanAction = "STOP_SCAN";
 
-        enum WatcherState
+        public static readonly string BondedDevicesKey = "bonded devices";
+
+        public enum WatcherState
         {
-            IN_PROGRESS,
+            NOT_CREATED,
+            IDLE,
+            SCANNING,
             STOPPED
         }
         
         public static int REQUEST_CODE = 677;
         BluetoothManager manager;
         BluetoothAdapter adapter;// share the bluetooth adapter
-        Context appContext;
-        WatcherState state;
+        public WatcherState state;
+
+        bool scan_success;
         public Func<Task> RefreshBTDevices
         {
             get;
@@ -40,124 +57,89 @@ namespace PastingMaui.Platforms
 
         public ObservableCollection<IBTDevice> btDevicesCollection
         {
-            get;
-            set;
+            get
+            {
+                return PastingApp.getApp()?.appClient.discovered_devices;
+            }
         }
 
-        ObservableCollection<IBTDevice> btDevices;
+        ObservableCollection<IBTDevice> IBTScan.btDevicesCollection { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        List<BTDevice> devices;
-
-        public BTScanner(ObservableCollection<IBTDevice> devices, Context context)
+        public override void OnCreate()
         {
-            manager = (BluetoothManager)context.GetSystemService(Context.BluetoothService);
+            base.OnCreate();
+            // one-time creation put here
+            manager = (BluetoothManager)MauiApplication.Context.GetSystemService(Context.BluetoothService);
             adapter = manager.Adapter;
-            btDevicesCollection = devices;
-            btDevices = devices;
-            
+            scan_success = false;
+            state = WatcherState.NOT_CREATED;
+
+            SetupReceivers();
+            state = WatcherState.IDLE;
         }
 
-        protected override void OnCreate(Bundle savedInstanceState)
-        {
-            base.OnCreate(savedInstanceState);
-            manager = (BluetoothManager)this.GetSystemService(Context.BluetoothService);
-            adapter = manager.Adapter;
-            //btDevicesCollection = Intent.GetParcelableExtra("devices");
-            //btDevices = devices;
-            devices = new List<BTDevice>();
-        }
-
-        protected override void OnStart() // this can either be in the app or here or the server
-        {
-            base.OnStart();
-            // check if bluetooth is enabled to start
-            if (adapter == null)
-            {
-                CreateWatcher();
-            }
-
-            if (!adapter.IsEnabled)
-            {
-                Intent enableBT = new Intent(BluetoothAdapter.ActionRequestEnable);
-                StartActivityForResult(enableBT, 3);
-            }
-
-        }
-
-        public void StartWatcher()
-        {
-            if (adapter == null)
-            {
-                CreateWatcher();
-            }
-
-            if (!adapter.IsEnabled)
-            {
-                Intent enableBT = new Intent(BluetoothAdapter.ActionRequestEnable);
-                StartActivityForResult(enableBT, 3);
-            }
-        }
-
-        private void CreateWatcher()
+        private void SetupReceivers()
         {
             // sets up action when a device is found
-            this.RegisterReceiver(new DiscoveryAction(devices, this), 
+            this.RegisterReceiver(new DiscoveryAction(),
                 new IntentFilter(BluetoothDevice.ActionFound));
 
             // sets up action when the discovery ends
-            this.RegisterReceiver(new DiscoveryAction(devices, this),
+            this.RegisterReceiver(new DiscoveryFinished(this),
                 new IntentFilter(BluetoothAdapter.ActionDiscoveryFinished));
+        }
 
-            ScanDevices();
-
-            ICollection<BluetoothDevice> bondedDevices = adapter.BondedDevices;
-
-            using (IEnumerator<BluetoothDevice> enumerator = bondedDevices.GetEnumerator())
+        private void AdapterOnCheck()
+        {
+            // checks if adapter is on
+            if (!adapter.IsEnabled)
             {
-                do
-                {
-                    btDevicesCollection.Add(new BTDevice(enumerator.Current));
-                } 
-                while (enumerator.MoveNext());
+
+                // if needed
+                Intent enableBT = new Intent(BluetoothAdapter.ActionRequestEnable);
+                // task user to enable bluetooth
+                MainActivity.GetMainActivity()?.StartActivityForResult(enableBT, ENABLE_BLUETOOTH_REQ_CODE);
+
+                // return and wait for result passed from MainActivity
+                return;
+
             }
 
         }
 
-        private class DiscoveryAction : BroadcastReceiver
+        public void GetBondedDevices() {
+            List<IParcelable> btPairedDevices = new List<IParcelable>();
+
+            ICollection<BluetoothDevice> bondedDevices = adapter.BondedDevices;
+            ScanMode mode = adapter.ScanMode;
+
+            using (IEnumerator<BluetoothDevice> enumerator = bondedDevices.GetEnumerator())
+            {
+                while (enumerator.MoveNext())
+                {
+                    btPairedDevices.Add(new BTDevice(enumerator.Current));
+                }
+            }
+
+            Intent intent = new Intent();
+            intent.PutParcelableArrayListExtra(BondedDevicesKey, btPairedDevices);
+            intent.SetAction(BondedDevicesAction);
+            SendBroadcast(intent);
+        }
+
+        private class DiscoveryFinished : BroadcastReceiver
         {
 
-            List<BTDevice> devices;
             BTScanner scanner;
-
-            public DiscoveryAction(List<BTDevice> btDevices, BTScanner activity)
+            public DiscoveryFinished(BTScanner btScanner)
             {
-                devices = btDevices;
-                scanner = activity;
+                scanner = btScanner;
             }
 
             public override void OnReceive(Context context, Intent intent)
             {
                 string action = intent.Action;
-                if (BluetoothDevice.ActionFound.Equals(action))
-                {
-                    int version = DeviceInfo.Current.Version.Major;
-                    BluetoothDevice device;
-                    if (version >= 33)
-                    {
-                        device = (BluetoothDevice)intent.GetParcelableExtra(action, Class);
-                    }
-                    else
-                    {
-                        device = (BluetoothDevice)intent.GetParcelableExtra(action);
-                    }
-
-                    if (device != null && device.BondState != Bond.Bonded)
-                    {
-                        devices.Add(new BTDevice(device));
-                    }
-
-                }
-                else if (BluetoothAdapter.ActionDiscoveryFinished.Equals(action))
+                if (BluetoothAdapter.ActionDiscoveryFinished.Equals(action))
                 {
                     scanner.ScanFinished();
                 }
@@ -166,39 +148,73 @@ namespace PastingMaui.Platforms
         }
 
         protected void ScanFinished() {
-            Intent resultIntent = new Intent();
-            // create 2 lists based on java, return those
-            resultIntent.PutParcelableArrayListExtra("devices", devices.Cast<IParcelable>().ToList());
-            //Bundle bundle = new Bundle();
-            //bundle.PutParcelableArrayList("devices", (IList<IParcelable>)devices);
-            //resultIntent.PutExtra("DEVICE_DATA", bundle);
-            SetResult(Result.Ok, resultIntent);
 
+            // Once scan is finished, broadcast the data back and kill the thread
+            Intent resultIntent = new Intent();
+            resultIntent.SetAction(ScanFinishedAction);
+            SendBroadcast(resultIntent);
+            state = WatcherState.IDLE;
+
+        }
+
+        [return: GeneratedEnum]
+        public override StartCommandResult OnStartCommand(Intent intent, [GeneratedEnum] StartCommandFlags flags, int startId)
+        {
+            StartCommandResult result = base.OnStartCommand(intent, flags, startId);
+
+            if (intent.Action == ScanDevicesAction)
+            {
+                if (state == WatcherState.NOT_CREATED)
+                {
+                    AdapterOnCheck();
+                }
+                ScanDevices();
+
+            }
+            else if (intent.Action == StopScanAction)
+            {
+
+                StopScan();
+                // unpack the receivers
+                // set them up
+            }
+            else if (intent.Action == BluetoothAdapter.ActionRequestEnable)
+            {
+                bool enabledBT = intent.GetBooleanExtra("enabled", false);
+                if (enabledBT)
+                {
+                    ScanDevices();
+                }
+            }
+
+            return result;
         }
 
         public void ScanDevices()
         {
             // before discovering check if already discovering
-
-
+            Toast toast;
             if (!adapter.IsDiscovering)
             {
-                adapter.StartDiscovery();
+                GetBondedDevices();
+                state = WatcherState.SCANNING;
+                scan_success = adapter.StartDiscovery();
+                toast = Toast.MakeText(MainActivity.GetMainActivity(), "Scanning for devices", ToastLength.Short);
+                //ThreadStart start = new ThreadStart(() =>
+                //{
+                //    scanSuccess = adapter.StartDiscovery();
+                //    return;
+                //});
+                //Thread thread = new Thread(ScanFinished);
             }
             else
             {
-                // display toast here
+                // Display toast saying already scanning
+                toast = Toast.MakeText(MainActivity.GetMainActivity(), "Already currently scanning for devices", ToastLength.Short);
+
             }
+            toast.Show();
 
-
-
-        }
-
-        protected override void OnDestroy()
-        {
-            base.OnDestroy();
-            StopScan();
-            // maybe remove the collection of devices?
         }
 
         protected override void Dispose(bool disposing)
@@ -209,9 +225,10 @@ namespace PastingMaui.Platforms
 
         public void StopScan()
         {
-            if (!adapter.IsDiscovering)
+            if (adapter.IsDiscovering)
             {
                 adapter.CancelDiscovery();
+                state = WatcherState.IDLE;
             }
         }
 
@@ -223,13 +240,18 @@ namespace PastingMaui.Platforms
         void IBTScan.ConnectToDevice(IBTDevice device)
         {
             Task.Run(async () => {
-                await device.Connect(this);
+                await device.Connect(PastingApp.getApp().appClient);
             });
         }
 
         public bool isScanning()
         {
             throw new NotImplementedException();
+        }
+
+        public override IBinder OnBind(Intent intent)
+        {
+            return null;
         }
     }
 }

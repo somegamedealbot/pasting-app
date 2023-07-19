@@ -1,15 +1,21 @@
 ﻿@using System.ComponentModel
 @using System.Collections.ObjectModel;
-@inject ToastService toast_service
+@inject IToastService toast_service
+@*@using PastingMaui.Shared.Toast*@
 
 <div class="position-absolute bottom-0 end-0 toast-alert-container">
 
     @{
-        foreach(var toast in toast_service.Toasts)
+        void RenderToasts(ObservableCollection<ToastData> toasts)
         {
-            @RenderToast(toast);
+            foreach(var toast in toasts)
+            {
+                @RenderToast(toast);
+            }
+
         }
-    //ToastData test = new ToastData("test", "testing");
+        toast_service.EnumerateToasts(RenderToasts);
+        //ToastData test = new ToastData("test", "testing");
     //<Toast toastData= "test" ></Toast>
 }
 </div>
