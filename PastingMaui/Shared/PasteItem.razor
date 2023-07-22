@@ -1,0 +1,23 @@
+﻿<h6>Paste Item</h6>
+
+@if (paste.isComplete())
+{
+    <p>@paste.StringData</p>
+}
+else
+{
+    <p>Loading</p>
+}
+
+@code {
+
+    [Parameter]
+    public Paste paste { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        paste.OnComplete += async (sender, args) => { await InvokeAsync(() => StateHasChanged()); };
+    }
+
+}

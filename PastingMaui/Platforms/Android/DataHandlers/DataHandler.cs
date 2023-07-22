@@ -4,7 +4,7 @@ using static PastingMaui.Platforms.PastingApp;
 
 namespace PastingMaui.Platforms.Windows.DataHandlers
 {
-    internal class DataHandler
+    public class DataHandler
     {
 
         IOHandler IOHandler;
@@ -50,6 +50,8 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             else
             {
                 IOHandler.WriteStreamTo(packet, convertedStream);
+
+                // after done notify here
             }
 
         }

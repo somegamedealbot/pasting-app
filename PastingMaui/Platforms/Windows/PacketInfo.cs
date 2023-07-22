@@ -44,6 +44,13 @@ namespace PastingMaui.Platforms.Android
             return packetInfo;
         }
 
+        public int SetupBuffer(byte[] buffer)
+        {
+            BitConverter.GetBytes(IsText).CopyTo(buffer, 0);
+            BitConverter.GetBytes(Size).CopyTo(buffer, sizeof(int));
+            return sizeof(int) + sizeof(uint);
+        }
+
         public static void SendPacketInfo()
         {
 

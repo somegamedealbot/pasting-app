@@ -44,8 +44,8 @@ namespace PastingMaui.Platforms
             _toast_service = _service;
             app = this;
             appClient = new Client();
-            appServer = new Server();
             dataHandler = new DataHandler();
+            appServer = new Server();
         }
         
         IServer IPasting.server {
@@ -91,7 +91,7 @@ namespace PastingMaui.Platforms
         {
             ConnectedToDevice = true;
             ConnectedDevice = device;
-            ioHandler = new IOHandler(device, socket);
+            ioHandler = new IOHandler(device, socket, dataHandler);
             SetupReadWriteHandlers();
             dataHandler.SetIOHandler(ioHandler);
             OnUIChangeOnConnect?.Invoke(this, null);

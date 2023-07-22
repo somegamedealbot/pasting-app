@@ -1,7 +1,5 @@
-﻿using Microsoft.UI.Composition;
-using PastingMaui.Platforms.Android;
-using System.Reflection.PortableExecutable;
-using System.Runtime.CompilerServices;
+﻿using PastingMaui.Platforms.Android;
+using PastingMaui.Shared;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using Windows.Storage.Streams;
@@ -63,7 +61,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             IBuffer buffer;
             uint tempCount = 0;
             uint remainingCount = 0;
-
+            Paste paste = new Paste(writeLocation);
             try
             {
                 while ((tempCount += await reader.LoadAsync((uint)IOHandler.bufferSize)) != 0
@@ -71,10 +69,13 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
                 {
                     remainingCount = packet.Size - tempCount;
                     buffer = reader.ReadBuffer((uint)IOHandler.bufferSize);
-                    using (var bufStream = buffer.AsStream())
-                    {
-                        bufStream.CopyTo(writeLocation);
-                    }
+                    var arr = buffer.ToArray();
+                    writeLocation.Write(arr, 0, arr.Length);
+
+                    //using (var bufStream = buffer.AsStream())
+                    //{
+                    //    bufStream.CopyTo(writeLocation);
+                    //}
                 }
 
             }

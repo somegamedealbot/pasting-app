@@ -1,13 +1,7 @@
 ﻿using PastingMaui.Data;
 using PastingMaui.Platforms.Android;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Sockets;
+using PastingMaui.Platforms.Windows.DataHandlers;
 using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
-using System.Threading.Tasks;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 
@@ -19,25 +13,20 @@ namespace PastingMaui.Platforms.Windows
         StreamSocket bluetoothSocket;
         DataReader reader;
         DataWriter writer;
+        DataHandler dataHandler;
 
         Thread readThread;
         Thread writeThread;
 
         public static int bufferSize = 4096;
 
-        public IOHandler(StreamSocket socket)
-        {
-            bluetoothSocket = socket;
-            reader = new DataReader(socket.InputStream);
-            writer = new DataWriter(socket.OutputStream);
-        }
-
-        public IOHandler(BTDevice device, StreamSocket socket)
+        public IOHandler(BTDevice device, StreamSocket socket, DataHandler handler)
         {
             btDevice = device;
             bluetoothSocket = socket;
             reader = new DataReader(socket.InputStream);
             writer = new DataWriter(socket.OutputStream);
+            dataHandler = handler;
         }
 
         public async void CloseConnection()
@@ -113,15 +102,17 @@ namespace PastingMaui.Platforms.Windows
                 try
                 {
                     PacketInfo packet = await PacketInfo.ReadPacketInfo(reader);
-                    Stream writeLocation;
+                    Stream writeLocation = null;
                     if (packet.IsText)
                     {
                         writeLocation = new MemoryStream();
                     }
                     else
                     {
-
+                        // setup file location here
                     }
+
+                    await dataHandler.ReceiveData(reader, packet, writeLocation);
 
 
                     // save file to folder location
@@ -162,9 +153,7 @@ namespace PastingMaui.Platforms.Windows
             int writeSize = 0;
 
             buffer.AsMemory(0, 4096);
-            BitConverter.GetBytes(packet.IsText).CopyTo(buffer, 0);
-            BitConverter.GetBytes(packet.Size).CopyTo(buffer, sizeof(int));
-            var infoSize = sizeof(int) + sizeof(uint);
+            var infoSize = packet.SetupBuffer(buffer);
 
             writer.WriteBuffer(buffer.AsBuffer(), 0, (uint)infoSize);
 
