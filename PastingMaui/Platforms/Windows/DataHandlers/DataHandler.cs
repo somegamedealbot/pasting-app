@@ -61,7 +61,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             IBuffer buffer;
             uint tempCount = 0;
             uint remainingCount = 0;
-            Paste paste = new Paste(writeLocation);
+            Paste paste = PastingApp.app.paste_manager.AddPaste(writeLocation);
             try
             {
                 while ((tempCount += await reader.LoadAsync((uint)IOHandler.bufferSize)) != 0
@@ -84,6 +84,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
                 throw;
             }
 
+            paste.CompletePaste();
             DisplayPasteData(packet, writeLocation);
             // notify the file is done
 

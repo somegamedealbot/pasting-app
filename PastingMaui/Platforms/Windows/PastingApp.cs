@@ -16,6 +16,7 @@ namespace PastingMaui.Platforms
         IOHandler handler;
         DataHandler dataHandler;
         public IToastService _toast_service;
+        public IPasteManager paste_manager;
 
         public event EventHandler OnUIChangeOnConnect;
         public event EventHandler OnUIChangeOnDisconnect;
@@ -25,9 +26,10 @@ namespace PastingMaui.Platforms
             get; private set;
         }
 
-        public PastingApp(IToastService _service)
+        public PastingApp(IToastService _service, IPasteManager _manager)
         {
             _toast_service = _service;
+            paste_manager = _manager;
             app = this;
             appClient = new Client();
             appServer = new Server();
@@ -144,8 +146,6 @@ namespace PastingMaui.Platforms
         {
             appClient.ScanDevices();
         }
-
-
 
         public void StartServer()
         {

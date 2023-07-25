@@ -2,18 +2,28 @@
 
 namespace PastingMaui.Shared
 {
-    internal class PasteList
+    internal class PasteManager : IPasteManager
     {
 
-        public ObservableCollection<Paste> pasteList = new ObservableCollection<Paste>();
+        public ObservableCollection<Paste> pasteList = new();
 
-        private ReaderWriterLockSlim pasteListLock = new ReaderWriterLockSlim();
+        private readonly ReaderWriterLockSlim pasteListLock = new();
 
-        public void AddPaste(Paste paste)
+        public Paste AddPaste(Stream streamData)
+        {
+            pasteListLock.EnterWriteLock();
+            var paste = new Paste(streamData);
+            pasteList.Add(paste);
+            pasteListLock.ExitWriteLock();
+            return paste;
+        }
+
+        public Paste AddPaste(Paste paste)
         {
             pasteListLock.EnterWriteLock();
             pasteList.Add(paste);
             pasteListLock.ExitWriteLock();
+            return paste;
         }
 
         public bool RemovePaste(Paste paste)
@@ -33,3 +43,4 @@ namespace PastingMaui.Shared
 
     }
 }
+

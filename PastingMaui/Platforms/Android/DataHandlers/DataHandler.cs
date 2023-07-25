@@ -1,4 +1,5 @@
 ﻿using PastingMaui.Platforms.Android;
+using PastingMaui.Shared;
 using System.Text;
 using static PastingMaui.Platforms.PastingApp;
 
@@ -61,7 +62,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             byte[] buffer = new byte[IOHandler.bufferSize];
             uint totalReadCount = 0;
             int tempCount = 0;
-
+            Paste paste = PastingApp.app.pasteManager.AddPaste(inStream);
             try
             {
                 while ((tempCount += await inStream.ReadAsync(buffer.AsMemory(0, IOHandler.bufferSize))) != 0 &&
@@ -77,6 +78,8 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             {
                 throw;
             }
+
+            paste.CompletePaste();
 
             // call to finished reading this file/txt
             //Task.Run(PastingApp.app)

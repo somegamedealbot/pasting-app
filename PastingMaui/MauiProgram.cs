@@ -39,7 +39,8 @@ public static class MauiProgram
         //builder.Services.AddSingleton<IServer, Server>();
         builder.Services.AddSingleton<IToastService, ToastService>();
         builder.Services.AddSingleton<IPasting, PastingApp>();
-		
+		builder.Services.AddSingleton<IPasteManager, PasteManager>();
+
 		/*builder.Services.AddSingleton<ToastData()>;*/
         /*builder.Services.AddTransient<IBTScan, BTScanner>();*/
 

@@ -52,9 +52,18 @@ namespace PastingMaui.Shared
         public Paste(Stream receivedData) {
             data = receivedData;
             pasteSemaphore = new SemaphoreSlim(1);
+            currentState = PasteState.Incomplete;
         }
 
-        public bool isComplete()
+        public void CompletePaste()
+        {
+            pasteSemaphore.Wait();
+            currentState = PasteState.Completed;
+            OnCompleteActions.Invoke(this, null);
+            pasteSemaphore.Release();
+        }
+
+        public bool IsComplete()
         {
             return State == PasteState.Completed;
         }
@@ -63,7 +72,7 @@ namespace PastingMaui.Shared
         {
             get
             {
-                if (isComplete()) { 
+                if (IsComplete()) { 
                     if (explicitData == null)
                     {
                         pasteSemaphore.Wait();

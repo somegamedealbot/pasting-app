@@ -1,9 +1,29 @@
 ﻿<h3>PasteGroup</h3>
 
+@inject IPasteManager pasteManager;
 
+@{
+    pasteManager.ActionOnList((pastes) =>
+        {
+            foreach (var paste in pastes)
+            {
+                RenderPaste(paste);
+            }
+        });
+
+}
 
 @code {
+    protected RenderFragment RenderPaste(Paste paste) => (builder) =>
+        {
+            builder.OpenComponent(0, typeof(PasteItem));
+            builder.AddAttribute(1, "Paste", paste);
+            builder.CloseComponent();
+        };
 
-    public 
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
 }

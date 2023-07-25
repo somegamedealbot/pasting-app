@@ -10,9 +10,11 @@ namespace PastingMaui.Shared
     public interface IPasteManager
     {
 
-        public void AddPaste(Paste paste);
+        public Paste AddPaste(Stream streamData);
 
-        public void RemovePaste(Paste paste);
+        public Paste AddPaste(Paste paste);
+
+        public bool RemovePaste(Paste paste);
 
         public void ActionOnList(Action<ObservableCollection<Paste>> action);
 
