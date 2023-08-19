@@ -1,6 +1,7 @@
 ﻿using Android.Bluetooth;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Windows.DataHandlers;
+using System.IO;
 
 namespace PastingMaui.Platforms.Android
 {
@@ -83,9 +84,10 @@ namespace PastingMaui.Platforms.Android
                 {
                     PacketInfo packet = await PacketInfo.ReadPacketInfo(inStream, bufferSize);
                     Stream writeLocation = null;
-                    if (!packet.IsText)
+                    if (packet.IsText)
                     {
                         writeLocation = new MemoryStream();
+                        writeLocation.SetLength(packet.Size);
                     }
                     else
                     {

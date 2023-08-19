@@ -1,5 +1,7 @@
 ﻿using PastingMaui.Data;
 using PastingMaui.Platforms.Windows;
+using PastingMaui.Platforms.Windows.DataHandlers;
+using System.Data;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Rfcomm;
 using Windows.Networking.Sockets;
@@ -16,6 +18,7 @@ namespace PastingMaui.Platforms
         StreamSocket socket;
         BluetoothDevice btDevice;
         BTDevice deviceInfo;
+        DataHandler dataHandler;
 
         IOHandler handler;
 
@@ -26,7 +29,9 @@ namespace PastingMaui.Platforms
         { 
         }
 
-        public Server() { }
+        public Server(DataHandler handler) {
+            dataHandler = handler;
+        }
 
         private delegate void OnReadThreadEndHandler(object sender, OnReadThreadEndArgs e);
 
@@ -118,7 +123,7 @@ namespace PastingMaui.Platforms
 
         private void SetHandler(StreamSocket socket, BTDevice device)
         {
-            handler = new IOHandler(device, socket);
+            handler = new IOHandler(device, socket, dataHandler);
         }
 
         /*

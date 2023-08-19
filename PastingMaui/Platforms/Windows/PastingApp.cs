@@ -16,7 +16,7 @@ namespace PastingMaui.Platforms
         IOHandler handler;
         DataHandler dataHandler;
         public IToastService _toast_service;
-        public IPasteManager paste_manager;
+        public IPasteManager pasteManager;
 
         public event EventHandler OnUIChangeOnConnect;
         public event EventHandler OnUIChangeOnDisconnect;
@@ -29,12 +29,12 @@ namespace PastingMaui.Platforms
         public PastingApp(IToastService _service, IPasteManager _manager)
         {
             _toast_service = _service;
-            paste_manager = _manager;
+            pasteManager = _manager;
             app = this;
             appClient = new Client();
-            appServer = new Server();
-            StartServer();
             dataHandler = new DataHandler();
+            appServer = new Server(dataHandler);
+            StartServer();
             // https://github.com/android/connectivity-samples/issues/263#issuecomment-1100650576
             // use for requsting bluetooth permission
         }
@@ -99,7 +99,7 @@ namespace PastingMaui.Platforms
             // might need to lock the object
             ConnectedToDevice = true;
             ConnectedDevice = device;
-            handler = new IOHandler(device, socket);
+            handler = new IOHandler(device, socket, dataHandler);
             dataHandler.SetIOHandler(handler);
             SetupReadWriteHandlers();
             OnUIChangeOnConnect.Invoke(this, null);

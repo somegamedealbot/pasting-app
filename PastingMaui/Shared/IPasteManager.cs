@@ -18,7 +18,7 @@ namespace PastingMaui.Shared
 
         public void ActionOnList(Action<ObservableCollection<Paste>> action);
 
-
+        public event EventHandler OnChanges;
 
     }
 }

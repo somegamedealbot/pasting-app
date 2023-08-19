@@ -1,5 +1,5 @@
 ﻿using PastingMaui.Data;
-using PastingMaui.Platforms.Android;
+using PastingMaui.Platforms.Windows;
 using PastingMaui.Platforms.Windows.DataHandlers;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Networking.Sockets;
@@ -11,8 +11,8 @@ namespace PastingMaui.Platforms.Windows
     {
         BTDevice btDevice;
         StreamSocket bluetoothSocket;
-        DataReader reader;
-        DataWriter writer;
+        Stream inStream;
+        Stream outStream;
         DataHandler dataHandler;
 
         Thread readThread;
@@ -24,42 +24,58 @@ namespace PastingMaui.Platforms.Windows
         {
             btDevice = device;
             bluetoothSocket = socket;
-            reader = new DataReader(socket.InputStream);
-            writer = new DataWriter(socket.OutputStream);
+            inStream = socket.InputStream.AsStreamForRead();
+            outStream = socket.OutputStream.AsStreamForWrite();
             dataHandler = handler;
         }
 
-        public async void CloseConnection()
+        public bool CloseConnection()
         {
-
-            try
+            if (bluetoothSocket is not null)
             {
-                await bluetoothSocket.CancelIOAsync();
-
+                // stop thread loops
+                // close streams and socket
+                inStream.Close();
+                outStream.Close();
+                //await bluetoothSocket.CancelIOAsync();
+                bluetoothSocket.Dispose();
+                bluetoothSocket = null;
+                return true;
             }
-            catch(Exception ex)
-            {
-
-            }
-            if (writer != null)
-            {
-                writer = null;
-            }
-
-            if (reader != null)
-            {
-                reader = null;
-            }
-
-            bluetoothSocket.Dispose();
-            // the method after this should consider disposing this handler
+            return false;
         }
+
+        //public async void CloseConnection()
+        //{
+
+        //    try
+        //    {
+        //        await bluetoothSocket.CancelIOAsync();
+
+        //    }
+        //    catch(Exception ex)
+        //    {
+
+        //    }
+        //    if (writer != null)
+        //    {
+        //        writer = null;
+        //    }
+
+        //    if (reader != null)
+        //    {
+        //        reader = null;
+        //    }
+
+        //    bluetoothSocket.Dispose();
+        //    // the method after this should consider disposing this handler
+        //}
 
         public bool StartReadThread()
         {
             readThread = new Thread(async () =>
             {
-                await ReadLoop(reader);
+                await ReadLoop(inStream);
                 CallOnReadEnd();
             });
             try { readThread.Start(); }
@@ -76,7 +92,7 @@ namespace PastingMaui.Platforms.Windows
         {
             writeThread = new Thread(async () =>
             {
-                await WriteData(writer, packet, data);
+                await WriteData(outStream, packet, data);
                 CallOnWriteEnd();
             });
             try { writeThread.Start(); }
@@ -89,7 +105,7 @@ namespace PastingMaui.Platforms.Windows
         }
 
 
-        public async Task ReadLoop(DataReader reader)
+        public async Task ReadLoop(Stream inStream)
         {
 
             // now connected to the client
@@ -101,7 +117,7 @@ namespace PastingMaui.Platforms.Windows
 
                 try
                 {
-                    PacketInfo packet = await PacketInfo.ReadPacketInfo(reader);
+                    PacketInfo packet = await PacketInfo.ReadPacketInfo(inStream);
                     Stream writeLocation = null;
                     if (packet.IsText)
                     {
@@ -112,7 +128,7 @@ namespace PastingMaui.Platforms.Windows
                         // setup file location here
                     }
 
-                    await dataHandler.ReceiveData(reader, packet, writeLocation);
+                    await dataHandler.ReceiveData(inStream, packet, writeLocation);
 
 
                     // save file to folder location
@@ -144,9 +160,9 @@ namespace PastingMaui.Platforms.Windows
                 //}
             }
         }
-        public async Task WriteData(DataWriter writer, PacketInfo packet, Stream data)
+
+        public async Task WriteData(Stream outStream, PacketInfo packet, Stream data)
         {
-            int bufferSize = 4096;
             byte[] buffer = new byte[bufferSize];
             uint totalWriteCount = 0;
             uint remainingCount = packet.Size;
@@ -155,7 +171,7 @@ namespace PastingMaui.Platforms.Windows
             buffer.AsMemory(0, 4096);
             var infoSize = packet.SetupBuffer(buffer);
 
-            writer.WriteBuffer(buffer.AsBuffer(), 0, (uint)infoSize);
+            outStream.Write(buffer, 0, infoSize);
 
             if (packet.Size < bufferSize)
             {
@@ -169,8 +185,9 @@ namespace PastingMaui.Platforms.Windows
             while (totalWriteCount < packet.Size)
             {
                 data.Read(buffer, 0, writeSize);
-                writer.WriteBytes(buffer);
-                await writer.StoreAsync();
+                outStream.Write(buffer, 0, writeSize);
+                outStream.Flush();
+                //await writer.StoreAsync();
                 totalWriteCount += (uint)writeSize;
                 remainingCount -= (uint)writeSize;
                 writeSize = (packet.Size - writeSize < bufferSize) ? (int)packet.Size : bufferSize;
@@ -179,5 +196,49 @@ namespace PastingMaui.Platforms.Windows
             }
 
         }
+
+        //public async Task WriteData(Stream outStream, PacketInfo packet, Stream data)
+        //{
+        //    int bufferSize = 4096;
+        //    byte[] buffer = new byte[bufferSize];
+        //    uint totalWriteCount = 0;
+        //    uint remainingCount = packet.Size;
+        //    int writeSize = 0;
+
+        //    buffer.AsMemory(0, 4096);
+        //    var infoSize = packet.SetupBuffer(buffer);
+        //    IBuffer convertedBuffer = buffer.AsBuffer();
+
+        //    writer.WriteBuffer(buffer.AsBuffer(), 0, (uint)infoSize);
+
+        //    if (packet.Size < bufferSize)
+        //    {
+        //        writeSize = (int)packet.Size;
+        //    }
+        //    else
+        //    {
+        //        writeSize = bufferSize;
+        //    }
+
+        //    while (totalWriteCount < packet.Size)
+        //    {
+        //        data.Read(buffer, 0, writeSize);
+        //        if (writeSize < bufferSize)
+        //        {
+        //            writer.WriteBuffer(convertedBuffer, 0, (uint)writeSize);
+        //        }
+        //        else
+        //        {
+        //            writer.WriteBuffer(convertedBuffer);
+        //        }
+        //        await writer.StoreAsync();
+        //        totalWriteCount += (uint)writeSize;
+        //        remainingCount -= (uint)writeSize;
+        //        writeSize = (remainingCount < bufferSize) ? (int)remainingCount : bufferSize;
+        //        //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
+
+        //    }
+
+        //}
     }
 }

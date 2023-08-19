@@ -1,8 +1,9 @@
-﻿using PastingMaui.Platforms.Android;
+﻿using PastingMaui.Platforms.Windows;
 using PastingMaui.Shared;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using Windows.Storage.Streams;
+using System;
 
 namespace PastingMaui.Platforms.Windows.DataHandlers
 {
@@ -56,26 +57,22 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
 
         }
 
-        public async Task ReceiveData(DataReader reader, PacketInfo packet, Stream writeLocation)
+        public async Task ReceiveData(Stream inStream, PacketInfo packet, Stream writeLocation)
         {
-            IBuffer buffer;
-            uint tempCount = 0;
-            uint remainingCount = 0;
-            Paste paste = PastingApp.app.paste_manager.AddPaste(writeLocation);
+            byte[] buffer = new byte[IOHandler.bufferSize];
+            uint totalReadCount = 0;
+            int tempCount = 0;
+            Paste paste = PastingApp.app.pasteManager.AddPaste(writeLocation);
+            int readSize = packet.Size > buffer.Length ? buffer.Length : (int)packet.Size;
             try
             {
-                while ((tempCount += await reader.LoadAsync((uint)IOHandler.bufferSize)) != 0
-                            && remainingCount > 0)
+                while (packet.Size > totalReadCount && (tempCount += await inStream.ReadAsync(buffer.AsMemory(0, readSize))) != 0)
                 {
-                    remainingCount = packet.Size - tempCount;
-                    buffer = reader.ReadBuffer((uint)IOHandler.bufferSize);
-                    var arr = buffer.ToArray();
-                    writeLocation.Write(arr, 0, arr.Length);
-
-                    //using (var bufStream = buffer.AsStream())
-                    //{
-                    //    bufStream.CopyTo(writeLocation);
-                    //}
+                    totalReadCount += (uint)tempCount;
+                    await writeLocation.WriteAsync(buffer.AsMemory(0, tempCount));
+                    uint remaining = packet.Size - totalReadCount;
+                    readSize = remaining > buffer.Length ? buffer.Length : (int)remaining;
+                    // save text or file here
                 }
 
             }
@@ -85,13 +82,9 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             }
 
             paste.CompletePaste();
-            DisplayPasteData(packet, writeLocation);
-            // notify the file is done
 
-        }
-
-        public void DisplayPasteData(PacketInfo packet, Stream writeLocation)
-        {
+            // call to finished reading this file/txt
+            //Task.Run(PastingApp.app)
 
         }
 

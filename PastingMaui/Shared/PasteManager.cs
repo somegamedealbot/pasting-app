@@ -9,6 +9,13 @@ namespace PastingMaui.Shared
 
         private readonly ReaderWriterLockSlim pasteListLock = new();
 
+        public event EventHandler OnChangesHandlers;
+
+        public event EventHandler OnChanges { 
+            add { OnChangesHandlers += value; } 
+            remove { OnChangesHandlers -= value; } 
+        }
+
         public Paste AddPaste(Stream streamData)
         {
             pasteListLock.EnterWriteLock();
@@ -17,6 +24,15 @@ namespace PastingMaui.Shared
             pasteListLock.ExitWriteLock();
             return paste;
         }
+
+        //public Paste AddPaste(Stream streamData)
+        //{
+        //    pasteListLock.EnterWriteLock();
+        //    var paste = new Paste(streamData);
+        //    pasteList.Add(paste);
+        //    pasteListLock.ExitWriteLock();
+        //    return paste;
+        //}
 
         public Paste AddPaste(Paste paste)
         {

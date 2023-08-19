@@ -1,5 +1,7 @@
 ﻿
 
+using PastingMaui.Platforms;
+
 namespace PastingMaui.Shared
 {
     public class Paste
@@ -59,7 +61,12 @@ namespace PastingMaui.Shared
         {
             pasteSemaphore.Wait();
             currentState = PasteState.Completed;
-            OnCompleteActions.Invoke(this, null);
+            if (data != null)
+            {
+                data.Position = 0; // temporary fix of reading extra null characters
+                // not sure what causes the reading of null characters
+            }
+            OnCompleteActions?.Invoke(this, null);
             pasteSemaphore.Release();
         }
 
@@ -76,9 +83,13 @@ namespace PastingMaui.Shared
                     if (explicitData == null)
                     {
                         pasteSemaphore.Wait();
+                        if (data == null) {
+                            Console.WriteLine("error point");
+                        }
                         using (var reader = new StreamReader(data))
                             explicitData = reader.ReadToEnd();
-                        data.Seek(0, SeekOrigin.Begin);
+                        // data.Seek(0, SeekOrigin.Begin);
+                        // close data stream here?
                         pasteSemaphore.Release();
                     }
                     return explicitData;

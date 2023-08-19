@@ -1,9 +1,9 @@
 ﻿using PastingMaui.Data;
 using Windows.Storage.Streams;
 
-namespace PastingMaui.Platforms.Android
+namespace PastingMaui.Platforms.Windows
 {
-    internal class PacketInfo : BasePacketInfo
+    public class PacketInfo : BasePacketInfo
     {
 
         public uint Size
@@ -16,16 +16,26 @@ namespace PastingMaui.Platforms.Android
             get; private set;
         }
 
-        public static async Task<PacketInfo> ReadPacketInfo(DataReader reader)
+        public void setPacketSize(uint size)
+        {
+            Size = size;
+        }
+
+        public void setIsText(bool text)
+        {
+            isText = text;
+        }
+
+        public static async Task<PacketInfo> ReadPacketInfo(Stream stream)
         {
             int infoSize = sizeof(uint) + sizeof(bool);
+            byte[] buffer = new byte[infoSize];
             PacketInfo packet = new PacketInfo();
-
             try
             {
-                await reader.LoadAsync((uint)infoSize);
-                packet.IsText = reader.ReadBoolean(); // type of info
-                packet.Size = reader.ReadUInt32();
+                await stream.ReadAsync(buffer, 0, infoSize);
+                packet.IsText = BitConverter.ToBoolean(buffer, 0);
+                packet.Size = BitConverter.ToUInt32(buffer, 1);
 
             }
             catch (Exception)
@@ -47,8 +57,8 @@ namespace PastingMaui.Platforms.Android
         public int SetupBuffer(byte[] buffer)
         {
             BitConverter.GetBytes(IsText).CopyTo(buffer, 0);
-            BitConverter.GetBytes(Size).CopyTo(buffer, sizeof(int));
-            return sizeof(int) + sizeof(uint);
+            BitConverter.GetBytes(Size).CopyTo(buffer, sizeof(bool));
+            return sizeof(bool) + sizeof(uint);
         }
 
         public static void SendPacketInfo()

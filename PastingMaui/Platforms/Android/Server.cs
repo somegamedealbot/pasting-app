@@ -2,6 +2,7 @@
 using Android.Content;
 using Java.Util;
 using PastingMaui.Data;
+using PastingMaui.Platforms.Windows.DataHandlers;
 using AndroidToast = Android.Widget.Toast;
 
 namespace PastingMaui.Platforms
@@ -14,6 +15,7 @@ namespace PastingMaui.Platforms
         readonly BluetoothManager manager;
         private BluetoothServerSocket socket;
         BTDevice device;
+        DataHandler dataHandler;
         string socketType;
         bool isSecure;
 

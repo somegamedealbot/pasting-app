@@ -2,6 +2,7 @@
 using PastingMaui.Shared;
 using System.Text;
 using static PastingMaui.Platforms.PastingApp;
+using System;
 
 namespace PastingMaui.Platforms.Windows.DataHandlers
 {
@@ -62,14 +63,16 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             byte[] buffer = new byte[IOHandler.bufferSize];
             uint totalReadCount = 0;
             int tempCount = 0;
-            Paste paste = PastingApp.app.pasteManager.AddPaste(inStream);
+            Paste paste = PastingApp.app.pasteManager.AddPaste(writeLocation);
+            int readSize = packet.Size > buffer.Length ? buffer.Length : (int)packet.Size;
             try
             {
-                while ((tempCount += await inStream.ReadAsync(buffer.AsMemory(0, IOHandler.bufferSize))) != 0 &&
-                                        packet.Size > totalReadCount)
+                while (packet.Size > totalReadCount && (tempCount += await inStream.ReadAsync(buffer.AsMemory(0, readSize))) != 0)
                 {
                     totalReadCount += (uint)tempCount;
-                    await writeLocation.WriteAsync(buffer);
+                    await writeLocation.WriteAsync(buffer.AsMemory(0, tempCount));
+                    uint remaining = packet.Size - totalReadCount;
+                    readSize = remaining > buffer.Length ? buffer.Length : (int)remaining;
                     // save text or file here
                 }
 
