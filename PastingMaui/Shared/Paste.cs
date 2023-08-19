@@ -7,6 +7,15 @@ namespace PastingMaui.Shared
     public class Paste
     {
 
+        public async Task SetPaste()
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await Clipboard.SetTextAsync(explicitData);
+
+            });
+        }
+
         public enum PasteState
         {
             Incomplete, InProgress, Completed

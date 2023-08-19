@@ -11,8 +11,8 @@ namespace PastingMaui.Platforms.Windows
     {
         BTDevice btDevice;
         StreamSocket bluetoothSocket;
-        Stream inStream;
-        Stream outStream;
+        DataReader reader;
+        DataWriter writer;
         DataHandler dataHandler;
 
         Thread readThread;
@@ -24,58 +24,42 @@ namespace PastingMaui.Platforms.Windows
         {
             btDevice = device;
             bluetoothSocket = socket;
-            inStream = socket.InputStream.AsStreamForRead();
-            outStream = socket.OutputStream.AsStreamForWrite();
+            reader = new(socket.InputStream);
+            writer = new(socket.OutputStream);
             dataHandler = handler;
         }
 
-        public bool CloseConnection()
+        public async void CloseConnection()
         {
-            if (bluetoothSocket is not null)
+
+            try
             {
-                // stop thread loops
-                // close streams and socket
-                inStream.Close();
-                outStream.Close();
-                //await bluetoothSocket.CancelIOAsync();
-                bluetoothSocket.Dispose();
-                bluetoothSocket = null;
-                return true;
+                await bluetoothSocket.CancelIOAsync();
+
             }
-            return false;
+            catch (Exception ex)
+            {
+
+            }
+            if (writer != null)
+            {
+                writer = null;
+            }
+
+            if (reader != null)
+            {
+                reader = null;
+            }
+
+            bluetoothSocket.Dispose();
+            // the method after this should consider disposing this handler
         }
-
-        //public async void CloseConnection()
-        //{
-
-        //    try
-        //    {
-        //        await bluetoothSocket.CancelIOAsync();
-
-        //    }
-        //    catch(Exception ex)
-        //    {
-
-        //    }
-        //    if (writer != null)
-        //    {
-        //        writer = null;
-        //    }
-
-        //    if (reader != null)
-        //    {
-        //        reader = null;
-        //    }
-
-        //    bluetoothSocket.Dispose();
-        //    // the method after this should consider disposing this handler
-        //}
 
         public bool StartReadThread()
         {
             readThread = new Thread(async () =>
             {
-                await ReadLoop(inStream);
+                await ReadLoop(reader);
                 CallOnReadEnd();
             });
             try { readThread.Start(); }
@@ -92,7 +76,7 @@ namespace PastingMaui.Platforms.Windows
         {
             writeThread = new Thread(async () =>
             {
-                await WriteData(outStream, packet, data);
+                await WriteData(writer, packet, data);
                 CallOnWriteEnd();
             });
             try { writeThread.Start(); }
@@ -105,7 +89,7 @@ namespace PastingMaui.Platforms.Windows
         }
 
 
-        public async Task ReadLoop(Stream inStream)
+        public async Task ReadLoop(DataReader inStream)
         {
 
             // now connected to the client
@@ -161,8 +145,9 @@ namespace PastingMaui.Platforms.Windows
             }
         }
 
-        public async Task WriteData(Stream outStream, PacketInfo packet, Stream data)
+        public async Task WriteData(DataWriter writer, PacketInfo packet, Stream data)
         {
+            int bufferSize = 4096;
             byte[] buffer = new byte[bufferSize];
             uint totalWriteCount = 0;
             uint remainingCount = packet.Size;
@@ -170,75 +155,38 @@ namespace PastingMaui.Platforms.Windows
 
             buffer.AsMemory(0, 4096);
             var infoSize = packet.SetupBuffer(buffer);
+            IBuffer convertedBuffer = buffer.AsBuffer();
 
-            outStream.Write(buffer, 0, infoSize);
+            writer.WriteBuffer(buffer.AsBuffer(), 0, (uint)infoSize);
 
             if (packet.Size < bufferSize)
             {
-                writeSize += (int)packet.Size;
+                writeSize = (int)packet.Size;
             }
             else
             {
-                writeSize += bufferSize - writeSize;
+                writeSize = bufferSize;
             }
 
             while (totalWriteCount < packet.Size)
             {
                 data.Read(buffer, 0, writeSize);
-                outStream.Write(buffer, 0, writeSize);
-                outStream.Flush();
-                //await writer.StoreAsync();
+                if (writeSize < bufferSize)
+                {
+                    writer.WriteBuffer(convertedBuffer, 0, (uint)writeSize);
+                }
+                else
+                {
+                    writer.WriteBuffer(convertedBuffer);
+                }
+                await writer.StoreAsync();
                 totalWriteCount += (uint)writeSize;
                 remainingCount -= (uint)writeSize;
-                writeSize = (packet.Size - writeSize < bufferSize) ? (int)packet.Size : bufferSize;
+                writeSize = (remainingCount < bufferSize) ? (int)remainingCount : bufferSize;
                 //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
 
             }
 
         }
-
-        //public async Task WriteData(Stream outStream, PacketInfo packet, Stream data)
-        //{
-        //    int bufferSize = 4096;
-        //    byte[] buffer = new byte[bufferSize];
-        //    uint totalWriteCount = 0;
-        //    uint remainingCount = packet.Size;
-        //    int writeSize = 0;
-
-        //    buffer.AsMemory(0, 4096);
-        //    var infoSize = packet.SetupBuffer(buffer);
-        //    IBuffer convertedBuffer = buffer.AsBuffer();
-
-        //    writer.WriteBuffer(buffer.AsBuffer(), 0, (uint)infoSize);
-
-        //    if (packet.Size < bufferSize)
-        //    {
-        //        writeSize = (int)packet.Size;
-        //    }
-        //    else
-        //    {
-        //        writeSize = bufferSize;
-        //    }
-
-        //    while (totalWriteCount < packet.Size)
-        //    {
-        //        data.Read(buffer, 0, writeSize);
-        //        if (writeSize < bufferSize)
-        //        {
-        //            writer.WriteBuffer(convertedBuffer, 0, (uint)writeSize);
-        //        }
-        //        else
-        //        {
-        //            writer.WriteBuffer(convertedBuffer);
-        //        }
-        //        await writer.StoreAsync();
-        //        totalWriteCount += (uint)writeSize;
-        //        remainingCount -= (uint)writeSize;
-        //        writeSize = (remainingCount < bufferSize) ? (int)remainingCount : bufferSize;
-        //        //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
-
-        //    }
-
-        //}
     }
 }

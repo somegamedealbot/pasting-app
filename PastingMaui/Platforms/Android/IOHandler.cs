@@ -135,7 +135,7 @@ namespace PastingMaui.Platforms.Android
                 //await writer.StoreAsync();
                 totalWriteCount += (uint)writeSize;
                 remainingCount -= (uint)writeSize;
-                writeSize = (packet.Size - writeSize < bufferSize) ? (int)packet.Size : bufferSize;
+                writeSize = (remainingCount < bufferSize) ? (int)remainingCount : bufferSize;
                 //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
 
             }

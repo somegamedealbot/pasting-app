@@ -67,12 +67,12 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             int readSize = packet.Size > buffer.Length ? buffer.Length : (int)packet.Size;
             try
             {
-                while (packet.Size > totalReadCount && (tempCount += await inStream.ReadAsync(buffer.AsMemory(0, readSize))) != 0)
+                while (packet.Size > totalReadCount && (tempCount = await inStream.ReadAsync(buffer.AsMemory(0, readSize))) != 0)
                 {
                     totalReadCount += (uint)tempCount;
                     await writeLocation.WriteAsync(buffer.AsMemory(0, tempCount));
                     uint remaining = packet.Size - totalReadCount;
-                    readSize = remaining > buffer.Length ? buffer.Length : (int)remaining;
+                    readSize = remaining > IOHandler.bufferSize ? IOHandler.bufferSize : (int)remaining;
                     // save text or file here
                 }
 

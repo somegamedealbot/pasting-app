@@ -57,22 +57,25 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
 
         }
 
-        public async Task ReceiveData(Stream inStream, PacketInfo packet, Stream writeLocation)
+        public async Task ReceiveData(DataReader reader, PacketInfo packet, Stream writeLocation)
         {
-            byte[] buffer = new byte[IOHandler.bufferSize];
-            uint totalReadCount = 0;
-            int tempCount = 0;
+            IBuffer buffer;
+            uint remainingCount = packet.Size;
             Paste paste = PastingApp.app.pasteManager.AddPaste(writeLocation);
-            int readSize = packet.Size > buffer.Length ? buffer.Length : (int)packet.Size;
+
+            uint readSize = (uint)(IOHandler.bufferSize > packet.Size ? (int)packet.Size: IOHandler.bufferSize);
+
             try
             {
-                while (packet.Size > totalReadCount && (tempCount += await inStream.ReadAsync(buffer.AsMemory(0, readSize))) != 0)
-                {
-                    totalReadCount += (uint)tempCount;
-                    await writeLocation.WriteAsync(buffer.AsMemory(0, tempCount));
-                    uint remaining = packet.Size - totalReadCount;
-                    readSize = remaining > buffer.Length ? buffer.Length : (int)remaining;
-                    // save text or file here
+                while (remainingCount > 0) {
+                    var readCount = await reader.LoadAsync(readSize);
+                    remainingCount -= readCount;
+                    buffer = reader.ReadBuffer(readSize);
+                    var arr = buffer.ToArray();
+                    writeLocation.Write(arr, 0, arr.Length);
+
+                    readSize = IOHandler.bufferSize > remainingCount ? remainingCount : (uint)IOHandler.bufferSize;
+
                 }
 
             }
@@ -82,9 +85,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             }
 
             paste.CompletePaste();
-
-            // call to finished reading this file/txt
-            //Task.Run(PastingApp.app)
+            // notify the file is done
 
         }
 

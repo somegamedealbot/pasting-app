@@ -25,15 +25,6 @@ namespace PastingMaui.Shared
             return paste;
         }
 
-        //public Paste AddPaste(Stream streamData)
-        //{
-        //    pasteListLock.EnterWriteLock();
-        //    var paste = new Paste(streamData);
-        //    pasteList.Add(paste);
-        //    pasteListLock.ExitWriteLock();
-        //    return paste;
-        //}
-
         public Paste AddPaste(Paste paste)
         {
             pasteListLock.EnterWriteLock();

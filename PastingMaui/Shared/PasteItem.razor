@@ -1,8 +1,13 @@
-﻿<h6>Paste Item</h6>
+﻿@using PastingMaui.Shared
+
+<h6>Paste Item</h6>
 
 @if (paste.IsComplete())
 {
-    <p>@paste.StringData</p>
+    <div>
+        <pre style="overflow-wrap: break-word;">@paste.StringData</pre>
+    </div>
+    <button @onclick="paste.SetPaste">Copy Paste</button>
 }
 else
 {

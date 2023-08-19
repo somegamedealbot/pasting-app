@@ -1,4 +1,5 @@
 ﻿using PastingMaui.Data;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Storage.Streams;
 
 namespace PastingMaui.Platforms.Windows
@@ -26,14 +27,15 @@ namespace PastingMaui.Platforms.Windows
             isText = text;
         }
 
-        public static async Task<PacketInfo> ReadPacketInfo(Stream stream)
+        public static async Task<PacketInfo> ReadPacketInfo(DataReader reader)
         {
             int infoSize = sizeof(uint) + sizeof(bool);
-            byte[] buffer = new byte[infoSize];
-            PacketInfo packet = new PacketInfo();
+            PacketInfo packet = new();
+
             try
             {
-                await stream.ReadAsync(buffer, 0, infoSize);
+                await reader.LoadAsync((uint)infoSize);
+                var buffer = reader.ReadBuffer((uint)infoSize).ToArray();
                 packet.IsText = BitConverter.ToBoolean(buffer, 0);
                 packet.Size = BitConverter.ToUInt32(buffer, 1);
 
