@@ -159,5 +159,18 @@ namespace PastingMaui.Platforms
             //ioHandler.Dispose();
             ioHandler.CloseConnection();
         }
+
+        public async Task SendFile(FileResult file)
+        {
+            try
+            {
+                FileStream stream = new(file.FullPath.ToString(), FileMode.Open, FileAccess.Read);
+                await dataHandler.SendFileData(stream, file.FileName);
+            }
+            catch (Exception ex)
+            {
+                // handle error here as toast
+            }
+        }
     }
 }

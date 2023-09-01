@@ -1,43 +1,39 @@
 ﻿using PastingMaui.Data;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Storage.Streams;
+using WinRT;
 
 namespace PastingMaui.Platforms.Windows
 {
     public class PacketInfo : BasePacketInfo
     {
 
-        public uint Size
-        {
-            get; private set;
-        }
-
-        public bool IsText
-        {
-            get; private set;
-        }
-
-        public void setPacketSize(uint size)
-        {
-            Size = size;
-        }
-
-        public void setIsText(bool text)
-        {
-            isText = text;
-        }
+        private PacketInfo() { }
 
         public static async Task<PacketInfo> ReadPacketInfo(DataReader reader)
         {
-            int infoSize = sizeof(uint) + sizeof(bool);
+            int infoSize = sizeof(uint) + sizeof(bool) + sizeof(int);
             PacketInfo packet = new();
 
             try
             {
                 await reader.LoadAsync((uint)infoSize);
                 var buffer = reader.ReadBuffer((uint)infoSize).ToArray();
+                int byteCount = 0;
                 packet.IsText = BitConverter.ToBoolean(buffer, 0);
-                packet.Size = BitConverter.ToUInt32(buffer, 1);
+                byteCount += sizeof(bool);
+                packet.Size = BitConverter.ToUInt32(buffer, byteCount);
+                byteCount += sizeof(uint);
+
+                var fileNameSize = BitConverter.ToInt32(buffer, byteCount);
+                byteCount += sizeof(int);
+
+                if (fileNameSize > 0)
+                {
+                    await reader.LoadAsync((uint)fileNameSize);
+                    var fileNameBuffer = reader.ReadBuffer((uint)fileNameSize).ToArray();
+                    packet.FileName = BitConverter.ToString(buffer, byteCount, fileNameSize);
+                }
 
             }
             catch (Exception)
@@ -48,26 +44,16 @@ namespace PastingMaui.Platforms.Windows
             return packet;
         }
 
-        public static PacketInfo SetPacketInfo(uint size, bool isText)
+        public static PacketInfo SetPacketInfo(uint size, bool isText, string fileName)
         {
-            PacketInfo packetInfo = new PacketInfo();
-            packetInfo.Size = size;
-            packetInfo.IsText = isText;
-            return packetInfo;
+            var packet = SetPacketInfo(new PacketInfo(), size, isText, fileName).As<PacketInfo>();
+            return packet;
         }
 
-        public int SetupBuffer(byte[] buffer)
+        public new int SetupBuffer(byte[] buffer)
         {
-            BitConverter.GetBytes(IsText).CopyTo(buffer, 0);
-            BitConverter.GetBytes(Size).CopyTo(buffer, sizeof(bool));
-            return sizeof(bool) + sizeof(uint);
+            return base.SetupBuffer(buffer);
         }
 
-        public static void SendPacketInfo()
-        {
-
-        }
-
-        private PacketInfo() { }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PastingMaui.Data;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,7 +11,7 @@ namespace PastingMaui.Shared
     public interface IPasteManager
     {
 
-        public Paste AddPaste(Stream streamData);
+        public Paste AddPaste(Stream streamData, BasePacketInfo packetInfo);
 
         public Paste AddPaste(Paste paste);
 

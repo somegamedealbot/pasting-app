@@ -91,10 +91,17 @@ namespace PastingMaui.Platforms.Android
                     }
                     else
                     {
-                        //writeLocation = File.Create() file path here
+                        var path = Path.Combine(FileSystem.AppDataDirectory, packet.FileName);
+                        writeLocation = File.OpenWrite((path));
+                        packet.WriteLocation = path;
                     }
 
                     await dataHandler.ReceiveData(inStream, packet, writeLocation);
+
+                    if (!packet.IsText)
+                    {
+                        writeLocation.Close();
+                    }
 
                 }
                 catch(Exception ex)
@@ -139,6 +146,9 @@ namespace PastingMaui.Platforms.Android
                 //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
 
             }
+
+            // dispose data stream
+            data.Dispose();
 
         }
 

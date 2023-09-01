@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using PastingMaui.Data;
+using System.Collections.ObjectModel;
 
 namespace PastingMaui.Shared
 {
@@ -16,10 +17,10 @@ namespace PastingMaui.Shared
             remove { OnChangesHandlers -= value; } 
         }
 
-        public Paste AddPaste(Stream streamData)
+        public Paste AddPaste(Stream streamData, BasePacketInfo packetInfo)
         {
             pasteListLock.EnterWriteLock();
-            var paste = new Paste(streamData);
+            var paste = new Paste(streamData, packetInfo);
             pasteList.Add(paste);
             pasteListLock.ExitWriteLock();
             return paste;

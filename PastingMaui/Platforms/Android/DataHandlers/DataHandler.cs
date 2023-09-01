@@ -42,7 +42,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
 
             var convertedStream = new MemoryStream(Encoding.UTF8.GetBytes(clipboardData));
 
-            PacketInfo packet = PacketInfo.SetPacketInfo((uint)clipboardData.Length, true);
+            PacketInfo packet = PacketInfo.SetPacketInfo((uint)clipboardData.Length, true, null);
 
 
             if (IOHandler == null)
@@ -58,12 +58,30 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
 
         }
 
+        public async Task SendFileData(FileStream fileStream, string fileName)
+        {
+            if (fileStream.Length > uint.MaxValue)
+            {
+                throw new Exception("File too big");
+            }
+            PacketInfo packet = PacketInfo.SetPacketInfo((uint)fileStream.Length, false, fileName);
+
+            if (IOHandler == null)
+            {
+                throw new Exception("null IOHandler");
+            }
+            else
+            {
+                IOHandler.WriteStreamTo(packet, fileStream);
+            }
+        }
+
         public async Task ReceiveData(Stream inStream, PacketInfo packet, Stream writeLocation)
         {
             byte[] buffer = new byte[IOHandler.bufferSize];
             uint totalReadCount = 0;
             int tempCount = 0;
-            Paste paste = PastingApp.app.pasteManager.AddPaste(writeLocation);
+            Paste paste = PastingApp.app.pasteManager.AddPaste(writeLocation, packet);
             int readSize = packet.Size > buffer.Length ? buffer.Length : (int)packet.Size;
             try
             {
@@ -79,6 +97,8 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
             }
             catch (Exception)
             {
+                paste.InCompletePaste();
+                //packet.Dispose()
                 throw;
             }
 

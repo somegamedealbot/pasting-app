@@ -1,11 +1,19 @@
 ﻿
 
-using PastingMaui.Platforms;
+using PastingMaui.Data;
 
 namespace PastingMaui.Shared
 {
     public class Paste
     {
+
+
+        Stream data;
+        string explicitData;
+        public BasePacketInfo pasteInfo
+        {
+            get; private set;
+        }
 
         public async Task SetPaste()
         {
@@ -18,7 +26,7 @@ namespace PastingMaui.Shared
 
         public enum PasteState
         {
-            Incomplete, InProgress, Completed
+            InProgress, Completed, Incomplete
         }
 
         public SemaphoreSlim pasteSemaphore;
@@ -56,27 +64,42 @@ namespace PastingMaui.Shared
                 pasteSemaphore.Release();
             }
         }
-
-        Stream data;
-        string explicitData;
-
-        public Paste(Stream receivedData) {
+        public Paste(Stream receivedData, BasePacketInfo packetInfo) {
             data = receivedData;
+            pasteInfo = packetInfo;
             pasteSemaphore = new SemaphoreSlim(1);
-            currentState = PasteState.Incomplete;
+            currentState = PasteState.InProgress;
         }
 
         public void CompletePaste()
         {
             pasteSemaphore.Wait();
             currentState = PasteState.Completed;
-            if (data != null)
+            if (pasteInfo.IsText)
             {
-                data.Position = 0; // temporary fix of reading extra null characters
-                // not sure what causes the reading of null characters
+                if (data != null)
+                {
+                    data.Position = 0; // temporary fix of reading extra null characters
+                    // not sure what causes the reading of null characters
+                }
+            }
+            else
+            {
+                data.Close();
             }
             OnCompleteActions?.Invoke(this, null);
             pasteSemaphore.Release();
+        }
+
+        public void InCompletePaste() // used in case of an error I/O error of saving or reading packet
+        {
+            if (State == PasteState.InProgress)
+            {
+                pasteSemaphore.Wait();
+                currentState = PasteState.Incomplete;
+                data.Close();
+                pasteSemaphore.Release();
+            }
         }
 
         public bool IsComplete()

@@ -102,7 +102,7 @@ namespace PastingMaui.Platforms
             handler = new IOHandler(device, socket, dataHandler);
             dataHandler.SetIOHandler(handler);
             SetupReadWriteHandlers();
-            OnUIChangeOnConnect.Invoke(this, null);
+            OnUIChangeOnConnect?.Invoke(this, null);
             if (handler.StartReadThread())
             {
                 _toast_service.AddToast("Out of Memory", "Out of memory, Could not create new thread for receiving data", ToastType.Alert);
@@ -129,7 +129,7 @@ namespace PastingMaui.Platforms
             //handler.Dispose()
             handler = null;
             dataHandler.RemoveIOHandler();
-            OnUIChangeOnDisconnect.Invoke(this, null);
+            OnUIChangeOnDisconnect?.Invoke(this, null);
         }
 
         public async Task SendPasteData()
@@ -150,6 +150,20 @@ namespace PastingMaui.Platforms
         public void StartServer()
         {
             Task.Run(() => appServer.InitServer()).Wait();
+        }
+
+        public async Task SendFile(FileResult file)
+        {
+            try
+            {
+                FileStream stream = new(file.FullPath.ToString(), FileMode.Open, FileAccess.Read);
+                
+                await dataHandler.SendFileData(stream, file.FileName);
+            }
+            catch(Exception ex)
+            {
+                // handle error here as toast
+            }
         }
     }
 }

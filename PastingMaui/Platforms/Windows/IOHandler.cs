@@ -18,6 +18,8 @@ namespace PastingMaui.Platforms.Windows
         Thread readThread;
         Thread writeThread;
 
+        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+
         public static int bufferSize = 4096;
 
         public IOHandler(BTDevice device, StreamSocket socket, DataHandler handler)
@@ -103,17 +105,24 @@ namespace PastingMaui.Platforms.Windows
                 {
                     PacketInfo packet = await PacketInfo.ReadPacketInfo(inStream);
                     Stream writeLocation = null;
+                    
                     if (packet.IsText)
                     {
                         writeLocation = new MemoryStream();
                     }
                     else
                     {
-                        // setup file location here
+                        var path = Path.Combine(FileSystem.AppDataDirectory, packet.FileName);
+                        writeLocation = File.OpenWrite((path));
+                        packet.WriteLocation = path;
                     }
 
                     await dataHandler.ReceiveData(inStream, packet, writeLocation);
 
+                    if (!packet.IsText)
+                    {
+                        writeLocation.Close();
+                    }
 
                     // save file to folder location
                 }
@@ -186,6 +195,10 @@ namespace PastingMaui.Platforms.Windows
                 //await data.WriteAsync(buffer.AsMemory(0, bufferSize));
 
             }
+
+            // disposes data stream
+
+            data.Dispose();
 
         }
     }

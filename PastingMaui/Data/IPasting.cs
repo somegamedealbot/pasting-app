@@ -54,6 +54,9 @@ namespace PastingMaui.Data
         public void StartScanningDevices();
 
         public Task SendPasteData();
+
+        public Task SendFile(FileResult file);
+
         public void DisconnectDevice();
 
     }

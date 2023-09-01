@@ -4,10 +4,25 @@
 
 @if (paste.IsComplete())
 {
-    <div>
-        <pre style="overflow-wrap: break-word;">@paste.StringData</pre>
-    </div>
-    <button @onclick="paste.SetPaste">Copy Paste</button>
+    @if (paste.pasteInfo.IsText)
+    {
+        <div>
+            <pre style="overflow-wrap: break-word;">@paste.StringData</pre>
+        </div>
+        <button @onclick="paste.SetPaste">Copy Paste</button>
+    }
+    else
+    {
+        <div>
+            <div>
+                <pre style="overflow-wrap: break-word;">@paste.pasteInfo.FileName</pre>
+            </div>
+            <div>
+                <a>File Location: </a>
+            </div>
+        </div>
+        <button>Show File Location</button>
+    }
 }
 else
 {
