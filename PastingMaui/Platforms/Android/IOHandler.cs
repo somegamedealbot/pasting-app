@@ -1,7 +1,6 @@
 ﻿using Android.Bluetooth;
 using PastingMaui.Data;
 using PastingMaui.Platforms.Windows.DataHandlers;
-using System.IO;
 
 namespace PastingMaui.Platforms.Android
 {
@@ -91,8 +90,9 @@ namespace PastingMaui.Platforms.Android
                     }
                     else
                     {
-                        var path = Path.Combine(FileSystem.AppDataDirectory, packet.FileName);
-                        writeLocation = File.OpenWrite((path));
+                        // directory issues on android
+                        var path = Path.Combine(FileSystem.Current.CacheDirectory, packet.FileName);
+                        writeLocation = File.OpenWrite(path);
                         packet.WriteLocation = path;
                     }
 

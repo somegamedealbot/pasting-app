@@ -1,5 +1,6 @@
 ﻿using PastingMaui.Data;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text;
 using Windows.Storage.Streams;
 using WinRT;
 
@@ -30,9 +31,10 @@ namespace PastingMaui.Platforms.Windows
 
                 if (fileNameSize > 0)
                 {
+                    //byte[] fileNameBuffer = new byte[fileNameSize];
                     await reader.LoadAsync((uint)fileNameSize);
                     var fileNameBuffer = reader.ReadBuffer((uint)fileNameSize).ToArray();
-                    packet.FileName = BitConverter.ToString(buffer, byteCount, fileNameSize);
+                    packet.FileName = Encoding.UTF8.GetString(fileNameBuffer);
                 }
 
             }

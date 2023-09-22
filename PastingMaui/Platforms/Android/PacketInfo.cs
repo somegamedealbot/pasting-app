@@ -33,7 +33,7 @@ namespace PastingMaui.Platforms.Android
                 {
                     byte[] fileNameBuffer = new byte[fileNameSize];
                     await stream.ReadAsync(fileNameBuffer.AsMemory(0, fileNameSize));
-                    packet.FileName = BitConverter.ToString(fileNameBuffer, byteCount, fileNameSize);
+                    packet.FileName = Encoding.UTF8.GetString(fileNameBuffer);
                 }
 
             }

@@ -22,6 +22,7 @@ namespace PastingMaui.Shared
             pasteListLock.EnterWriteLock();
             var paste = new Paste(streamData, packetInfo);
             pasteList.Add(paste);
+            OnChangesHandlers?.Invoke(this, null);
             pasteListLock.ExitWriteLock();
             return paste;
         }
@@ -30,6 +31,7 @@ namespace PastingMaui.Shared
         {
             pasteListLock.EnterWriteLock();
             pasteList.Add(paste);
+            OnChangesHandlers?.Invoke(this, null);
             pasteListLock.ExitWriteLock();
             return paste;
         }
@@ -38,6 +40,7 @@ namespace PastingMaui.Shared
         {
             pasteListLock.EnterWriteLock();
             var isRemoved = pasteList.Remove(paste);
+            OnChangesHandlers?.Invoke(this, null);
             pasteListLock.ExitWriteLock();
             return isRemoved;
         }

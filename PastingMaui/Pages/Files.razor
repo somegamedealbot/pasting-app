@@ -7,8 +7,16 @@
 *@
 <h3>Files</h3>
 
-<button @onclick="PickFile">Pick Files</button>
-<button @onclick="SendFiles">Send Files</button>
+@if (pastingApp.ConnectedToDevice)
+{
+    <button @onclick="PickFile">Pick Files</button>
+    <button @onclick="SendFiles">Send Files</button>
+}
+else
+{
+    <h3>No devices connected to send files</h3>
+}
+
 
 @code {
 

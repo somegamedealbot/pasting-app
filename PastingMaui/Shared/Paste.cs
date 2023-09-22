@@ -7,7 +7,6 @@ namespace PastingMaui.Shared
     public class Paste
     {
 
-
         Stream data;
         string explicitData;
         public BasePacketInfo pasteInfo
@@ -85,6 +84,7 @@ namespace PastingMaui.Shared
             }
             else
             {
+                data.Flush();
                 data.Close();
             }
             OnCompleteActions?.Invoke(this, null);
