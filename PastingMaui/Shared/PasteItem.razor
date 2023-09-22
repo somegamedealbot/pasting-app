@@ -1,0 +1,43 @@
+﻿@using PastingMaui.Shared
+
+<h6>Paste Item</h6>
+
+@if (paste.IsComplete())
+{
+    @if (paste.pasteInfo.IsText)
+    {
+        <div>
+            <pre style="overflow-wrap: break-word;">@paste.StringData</pre>
+        </div>
+        <button @onclick="paste.SetPaste">Copy Paste</button>
+    }
+    else
+    {
+        <div>
+            <div>
+                <pre style="overflow-wrap: break-word;">@paste.pasteInfo.FileName</pre>
+            </div>
+            <div>
+                <a>File Location: </a>
+            </div>
+        </div>
+        <button>Show File Location</button>
+    }
+}
+else
+{
+    <p>Loading</p>
+}
+
+@code {
+
+    [Parameter]
+    public Paste paste { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        paste.OnComplete += async (sender, args) => { await InvokeAsync(() => StateHasChanged()); };
+    }
+
+}

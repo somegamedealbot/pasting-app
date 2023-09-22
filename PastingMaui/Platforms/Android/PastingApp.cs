@@ -27,6 +27,7 @@ namespace PastingMaui.Platforms
 
         public Client appClient;
         private IToastService _toast_service;
+        public IPasteManager pasteManager;
         public Server appServer;
         private IOHandler ioHandler;
         private DataHandler dataHandler;
@@ -39,13 +40,14 @@ namespace PastingMaui.Platforms
             get; private set;
         }
 
-        public PastingApp(IToastService _service)
+        public PastingApp(IToastService _service, IPasteManager _manager)
         {
             _toast_service = _service;
+            pasteManager = _manager;
             app = this;
             appClient = new Client();
-            appServer = new Server();
             dataHandler = new DataHandler();
+            appServer = new Server();
         }
         
         IServer IPasting.server {
@@ -91,7 +93,7 @@ namespace PastingMaui.Platforms
         {
             ConnectedToDevice = true;
             ConnectedDevice = device;
-            ioHandler = new IOHandler(device, socket);
+            ioHandler = new IOHandler(device, socket, dataHandler);
             SetupReadWriteHandlers();
             dataHandler.SetIOHandler(ioHandler);
             OnUIChangeOnConnect?.Invoke(this, null);
@@ -156,6 +158,19 @@ namespace PastingMaui.Platforms
         {
             //ioHandler.Dispose();
             ioHandler.CloseConnection();
+        }
+
+        public async Task SendFile(FileResult file)
+        {
+            try
+            {
+                FileStream stream = new(file.FullPath.ToString(), FileMode.Open, FileAccess.Read);
+                await dataHandler.SendFileData(stream, file.FileName);
+            }
+            catch (Exception ex)
+            {
+                // handle error here as toast
+            }
         }
     }
 }

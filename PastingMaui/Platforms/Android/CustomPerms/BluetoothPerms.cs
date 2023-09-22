@@ -9,6 +9,7 @@ namespace PastingMaui.Platforms.Android.CustomPerms
 {
     internal class BluetoothPerms : BasePlatformPermission
     {
+        // modify this for android future android versions
         public override (string androidPermission, bool isRuntime)[] RequiredPermissions => new List<(string permission, bool isRuntime)>
         {
             ("android.permission.BLUETOOTH", true),

@@ -5,6 +5,8 @@ using PastingMaui.Platforms;
 using System.Collections.ObjectModel;
 using PastingMaui.Shared;
 using System.Runtime.CompilerServices;
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Storage;
 
 namespace PastingMaui;
 
@@ -29,7 +31,8 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
-			.ConfigureFonts(fonts =>
+            .UseMauiCommunityToolkit()
+            .ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
 			});
@@ -39,7 +42,8 @@ public static class MauiProgram
         //builder.Services.AddSingleton<IServer, Server>();
         builder.Services.AddSingleton<IToastService, ToastService>();
         builder.Services.AddSingleton<IPasting, PastingApp>();
-		
+		builder.Services.AddSingleton<IPasteManager, PasteManager>();
+
 		/*builder.Services.AddSingleton<ToastData()>;*/
         /*builder.Services.AddTransient<IBTScan, BTScanner>();*/
 

@@ -79,28 +79,13 @@
 
 @code {
 
-    //ObservableCollection<IBTDevice> discovered_devices = MauiProgram.BTDevices;
-    //List<IBTDevice> devices_removed = new List<IBTDevice>();
-    //List<ToastData> toastDatas = new List<ToastData>();
-
-
     protected async Task ConnectToDevice(IBTDevice device)
     {
         ToastData alert = new ToastData("Connecting", $"Trying to connect to {device.Name}", ToastType.Alert);
         toast_service.AddToast(alert);
-        // toastDatas.Add(alert);
-        // await Rerender();
         ToastData responseAlert = await Task.Run(() => device.Connect(pastingApp.client));
         toast_service.AddToast(responseAlert);
-        //await Rerender();
     }
-
-    //protected RenderFragment RenderToast(ToastData toastData) => (builder) =>
-    //{
-    //    builder.OpenComponent(0, typeof(ToastAlert));   
-    //    builder.AddAttribute(1, "toastContent", toastData);
-    //    builder.CloseComponent();
-    //};
 
     protected override void OnInitialized()
     {
@@ -111,13 +96,6 @@
         {
             pastingApp.StartScanningDevices();
         }
-        // start server too 
-
-
-        //IBTDevice.RefreshDevice = Rerender;
-        //var scanner = pastingApp.client.scanner;
-        //scanner.RefreshBTDevices = Rerender;
-        //scanner.ScanDevices(); // scan devices only once and when clicked off it stays active rather than reinitialized or just clear the list after clicking 
        
     }
 
@@ -125,9 +103,7 @@
     {
         
         await InvokeAsync(StateHasChanged);  // could be running on another Thread
-        
-        // dispatcher
-        // dispose
+
     }
 
 }

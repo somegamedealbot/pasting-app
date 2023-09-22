@@ -1,0 +1,32 @@
+﻿@using System.Collections.ObjectModel;
+<h3>PasteGroup</h3>
+
+@inject IPasteManager pasteManager;
+
+@{
+    void RenderPastes(ObservableCollection<Paste> pastes)
+    {
+        foreach (var paste in pastes)
+        {
+            @RenderPaste(paste);
+        }
+    }
+    pasteManager.ActionOnList(RenderPastes);
+
+}
+
+@code {
+    protected RenderFragment RenderPaste(Paste paste) => (builder) =>
+        {
+            builder.OpenComponent(0, typeof(PasteItem));
+            builder.AddAttribute(1, "Paste", paste);
+            builder.CloseComponent();
+        };
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        pasteManager.OnChanges += async (sender, args) => { await InvokeAsync(() => StateHasChanged()); };
+    }
+}

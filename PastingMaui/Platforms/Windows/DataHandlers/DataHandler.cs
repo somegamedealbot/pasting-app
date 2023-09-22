@@ -1,7 +1,5 @@
-﻿using Microsoft.UI.Composition;
-using PastingMaui.Platforms.Android;
-using System.Reflection.PortableExecutable;
-using System.Runtime.CompilerServices;
+﻿using PastingMaui.Platforms.Windows;
+using PastingMaui.Shared;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using Windows.Storage.Streams;
@@ -44,7 +42,7 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
 
             var convertedStream = new MemoryStream(Encoding.UTF8.GetBytes(clipboardData));
 
-            PacketInfo packet = PacketInfo.SetPacketInfo((uint)convertedStream.Length, true);
+            PacketInfo packet = PacketInfo.SetPacketInfo((uint)convertedStream.Length, true, null);
 
 
             if (IOHandler == null)
@@ -58,38 +56,56 @@ namespace PastingMaui.Platforms.Windows.DataHandlers
 
         }
 
+        public async Task SendFileData(FileStream fileStream, string fileName)
+        {
+            if (fileStream.Length > uint.MaxValue)
+            {
+                throw new Exception("File too big");
+            }
+
+            PacketInfo packet = PacketInfo.SetPacketInfo((uint)fileStream.Length, false, fileName);
+
+            if (IOHandler == null)
+            {
+                throw new Exception("null IOHandler");
+            }
+            else
+            {
+                IOHandler.WriteStreamTo(packet, fileStream);
+            }
+        }
+
         public async Task ReceiveData(DataReader reader, PacketInfo packet, Stream writeLocation)
         {
             IBuffer buffer;
-            uint tempCount = 0;
-            uint remainingCount = 0;
+            uint remainingCount = packet.Size;
+            Paste paste = PastingApp.app.pasteManager.AddPaste(writeLocation, packet);
+
+            uint readSize = (uint)(IOHandler.bufferSize > packet.Size ? (int)packet.Size: IOHandler.bufferSize);
 
             try
             {
-                while ((tempCount += await reader.LoadAsync((uint)IOHandler.bufferSize)) != 0
-                            && remainingCount > 0)
-                {
-                    remainingCount = packet.Size - tempCount;
-                    buffer = reader.ReadBuffer((uint)IOHandler.bufferSize);
-                    using (var bufStream = buffer.AsStream())
-                    {
-                        bufStream.CopyTo(writeLocation);
-                    }
+                while (remainingCount > 0) {
+                    var readCount = await reader.LoadAsync(readSize);
+                    remainingCount -= readCount;
+                    buffer = reader.ReadBuffer(readSize);
+                    var arr = buffer.ToArray();
+                    writeLocation.Write(arr, 0, arr.Length);
+
+                    readSize = IOHandler.bufferSize > remainingCount ? remainingCount : (uint)IOHandler.bufferSize;
+
                 }
 
             }
             catch (Exception)
             {
+                paste.InCompletePaste();
+                //packet.Dispose()
                 throw;
             }
 
-            DisplayPasteData(packet, writeLocation);
+            paste.CompletePaste();
             // notify the file is done
-
-        }
-
-        public void DisplayPasteData(PacketInfo packet, Stream writeLocation)
-        {
 
         }
 

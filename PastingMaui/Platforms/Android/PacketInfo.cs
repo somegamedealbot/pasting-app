@@ -1,30 +1,40 @@
 ﻿using PastingMaui.Data;
+using static System.Net.Mime.MediaTypeNames;
+using System;
+using Microsoft.Maui.Controls.PlatformConfiguration;
+using System.Text;
 
 namespace PastingMaui.Platforms.Android
 {
     public class PacketInfo : BasePacketInfo
     {
 
-        public uint Size
-        {
-            get; private set;
-        }
-
-        public bool IsText
-        {
-            get; private set;
-        }
-
         public static async Task<PacketInfo> ReadPacketInfo(Stream stream, int bufferSize)
         {
-            int infoSize = sizeof(uint) + sizeof(bool);
+            int infoSize = sizeof(uint) + sizeof(bool) + sizeof(int);
             byte[] buffer = new byte[infoSize];
-            PacketInfo packet = new PacketInfo();
+            PacketInfo packet = new();
+
             try
             {
-                await stream.ReadAsync(buffer, 0, infoSize);
-                packet.isText = BitConverter.ToBoolean(buffer, 0);
-                packet.Size = BitConverter.ToUInt32(buffer, sizeof(bool));
+                await stream.ReadAsync(buffer.AsMemory(0, infoSize));
+                //await stream.ReadAsync(buffer.AsMemory(0, infoSize));
+                int byteCount = 0;
+
+                packet.IsText = BitConverter.ToBoolean(buffer, 0);
+                byteCount += sizeof(bool);
+                packet.Size = BitConverter.ToUInt32(buffer, 1);
+                byteCount += sizeof(uint);
+
+                var fileNameSize = BitConverter.ToInt32(buffer, byteCount);
+                byteCount += sizeof(int);
+
+                if (fileNameSize > 0)
+                {
+                    byte[] fileNameBuffer = new byte[fileNameSize];
+                    await stream.ReadAsync(fileNameBuffer.AsMemory(0, fileNameSize));
+                    packet.FileName = Encoding.UTF8.GetString(fileNameBuffer);
+                }
 
             }
             catch (Exception)
@@ -35,17 +45,14 @@ namespace PastingMaui.Platforms.Android
             return packet;
         }
 
-        public static PacketInfo SetPacketInfo(uint size, bool isText)
+        public static new PacketInfo SetPacketInfo(uint size, bool isText, string fileName)
         {
-            PacketInfo packetInfo = new PacketInfo();
-            packetInfo.Size = size;
-            packetInfo.IsText = isText;
-            return packetInfo;
+            return (PacketInfo)SetPacketInfo(new PacketInfo(), size, isText, fileName);
         }
 
-        public static void SendPacketInfo()
+        public new int SetupBuffer(byte[] buffer)
         {
-
+            return base.SetupBuffer(buffer);
         }
 
         private PacketInfo() { }

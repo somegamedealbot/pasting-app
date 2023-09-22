@@ -1,9 +1,44 @@
-﻿@page "/files"
+﻿
+@page "/send-files"
+@using PastingMaui.Data
+@inject IPasting pastingApp
 @*
     Page used to display recently recieved files and paths to their locations
 *@
 <h3>Files</h3>
 
+@if (pastingApp.ConnectedToDevice)
+{
+    <button @onclick="PickFile">Pick Files</button>
+    <button @onclick="SendFiles">Send Files</button>
+}
+else
+{
+    <h3>No devices connected to send files</h3>
+}
+
+
 @code {
+
+    IEnumerable<FileResult> filesPicked;
+
+    public async void PickFile()
+    {
+        PickOptions options = new();
+        options.FileTypes = CustomFilePickerTypes.types;
+
+        filesPicked = await FilePicker.PickMultipleAsync(options);
+
+    }
+
+    public async void SendFiles(){
+        if (filesPicked != null){
+            foreach (var file in filesPicked)
+            {
+                await pastingApp.SendFile(file);
+            }
+            filesPicked = null;
+        }
+    }
 
 }

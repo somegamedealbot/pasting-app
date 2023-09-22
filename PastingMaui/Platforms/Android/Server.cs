@@ -1,9 +1,8 @@
 ﻿using Android.Bluetooth;
 using Android.Content;
-using Android.Runtime;
 using Java.Util;
 using PastingMaui.Data;
-using PastingMaui.Platforms.Android;
+using PastingMaui.Platforms.Windows.DataHandlers;
 using AndroidToast = Android.Widget.Toast;
 
 namespace PastingMaui.Platforms
@@ -12,30 +11,13 @@ namespace PastingMaui.Platforms
     {
         public Server(Context context) { }
 
-        BluetoothAdapter adapter;
-        BluetoothManager manager;
+        readonly BluetoothAdapter adapter;
+        readonly BluetoothManager manager;
         private BluetoothServerSocket socket;
-        IOHandler handler;
-        string socketType = string.Empty;
         BTDevice device;
+        DataHandler dataHandler;
+        string socketType;
         bool isSecure;
-
-        private class PastingProfile : Java.Lang.Object, IBluetoothProfile
-        {
-            public IList<BluetoothDevice> ConnectedDevices => throw new NotImplementedException();
-
-            [return: GeneratedEnum]
-            public ProfileState GetConnectionState(BluetoothDevice device)
-            {
-                throw new NotImplementedException();
-            }
-
-            public IList<BluetoothDevice> GetDevicesMatchingConnectionStates([GeneratedEnum] ProfileState[] states)
-            {
-                throw new NotImplementedException();
-            }
-        }
-        IBluetoothProfile profile;
 
         public Server() {
             manager = ((BluetoothManager)MauiApplication.Context.GetSystemService(Context.BluetoothService));
@@ -96,7 +78,6 @@ namespace PastingMaui.Platforms
             {
                 PastingApp.app.StopServicesOnConnect();
                 device = new BTDevice(btSocket.RemoteDevice);
-                SetIOHandler(btSocket, device);
                 //handler.StartReadThread();
                 PastingApp.app.SetConnectedDevice(device, btSocket);
                 PastingApp.ToastMaker.MakeAndShowToast("Connected to device");
@@ -108,12 +89,6 @@ namespace PastingMaui.Platforms
             socket.Close();
             socket = null;
             //handler?.Dispose();
-        }
-
-        private void SetIOHandler(BluetoothSocket socket, BTDevice btDevice)
-        {
-            //handler?.Dispose();
-            handler = new IOHandler(btDevice, socket);
         }
 
     }
